@@ -32,6 +32,7 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 fun main() = application {
+    try { WindowsAppPaths.cleanupTemporaryFiles() } catch (_: Exception) { }
     Window(onCloseRequest = { exitApplication() }, title = "Photo-Locker Windows") {
         MaterialTheme {
             PhotoLockerDesktopApp()
@@ -227,7 +228,7 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
         thumbnailMessage = ""
         if (session?.isUnlocked == true) {
             thumbnailImages = withContext(Dispatchers.IO) {
-                val engine = SecureThumbnailEngine(session, WindowsAppPaths.thumbnailDirectory())
+                val engine = SecureThumbnailEngine(session, WindowsAppPaths.thumbnailDirectory(), WindowsAppPaths.temporaryDirectory())
                 val loaded = mutableMapOf<String, java.awt.image.BufferedImage>()
                 records.filter { it.mimeType.startsWith("image/") }.forEach { media ->
                     try {
@@ -273,7 +274,7 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
                                         viewerTitle = item.originalName
                                         viewerTemp = try {
                                             val encrypted = WindowsAppPaths.encryptedMediaDirectory().resolve(item.encryptedRelativePath.substringAfterLast('/'))
-                                            SecureMediaViewerTemp.open(session, encrypted)
+                                            SecureMediaViewerTemp.open(session, encrypted, WindowsAppPaths.temporaryDirectory())
                                         } catch (ex: Exception) {
                                             viewerError = ex.message ?: "Unable to open photo."
                                             null
