@@ -4,6 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.awt.SwingPanel
+import javax.swing.JLabel
+import javax.swing.ImageIcon
+import javax.imageio.ImageIO
+import com.winsmediatama.photolocker.windows.core.media.SecureMediaViewerTemp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -189,6 +195,9 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
     var error by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var menuMediaId by remember { mutableStateOf<String?>(null) }
+    var viewerTemp by remember { mutableStateOf<SecureMediaViewerTemp?>(null) }
+    var viewerError by remember { mutableStateOf("") }
+    var viewerTitle by remember { mutableStateOf("") }
     LaunchedEffect(session) {
         records = emptyList(); albums = emptyList(); error = ""; status = ""
         if (session?.isUnlocked == true) {
@@ -246,6 +255,21 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
             if (albums.isEmpty()) Text("Create an album first in the Albums page to organize media.")
         }
     }
+    if (viewerTemp != null) {
+        Dialog(onDismissRequest = { viewerTemp?.close(); viewerTemp = null }) {
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(viewerTitle, style = MaterialTheme.typography.titleMedium)
+                    SwingPanel(
+                        modifier = Modifier.fillMaxWidth().height(520.dp),
+                        factory = { JLabel(ImageIcon(ImageIO.read(viewerTemp!!.path.toFile()))).apply { horizontalAlignment = JLabel.CENTER } }
+                    )
+                    Button(onClick = { viewerTemp?.close(); viewerTemp = null }, modifier = Modifier.align(Alignment.End)) { Text("Close photo") }
+                }
+            }
+        }
+    }
+    if (viewerError.isNotBlank()) AlertDialog(onDismissRequest={viewerError=""}, title={Text("Photo viewer")}, text={Text(viewerError)}, confirmButton={TextButton(onClick={viewerError=""}){Text("OK")}})
 }
 
 @Composable
