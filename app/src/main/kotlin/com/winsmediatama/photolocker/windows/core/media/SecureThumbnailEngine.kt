@@ -43,6 +43,17 @@ class SecureThumbnailEngine(
         }
     }
 
+    fun loadEncryptedThumbnailPreview(encryptedThumbnail: Path): BufferedImage {
+        val privateTemp = Files.createTempDirectory(tempRoot, "plw-thumb-view-")
+        val plain = privateTemp.resolve("preview.png")
+        try {
+            session.withKey { key -> VaultFileCrypto.decryptFile(encryptedThumbnail, plain, key) }
+            return ImageIO.read(plain.toFile()) ?: throw IllegalArgumentException("Thumbnail image is invalid.")
+        } finally {
+            deleteTreeBestEffort(privateTemp)
+        }
+    }
+
     private fun scale(source: BufferedImage, maxEdge: Int): BufferedImage {
         val largest = maxOf(source.width, source.height)
         val ratio = if (largest <= maxEdge) 1.0 else maxEdge.toDouble() / largest
