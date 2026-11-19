@@ -187,7 +187,7 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
     fun reload() {
         if (session?.isUnlocked == true) {
             albums = try { VaultDatabase(WindowsAppPaths.databaseFile(), session).listAlbums() }
-            catch (e: Exception) { message = e.message ?: "Could not load albums." }
+            catch (e: Exception) { message = e.message ?: "Could not load albums."; emptyList() }
         } else albums = emptyList()
     }
     LaunchedEffect(session) { reload() }
