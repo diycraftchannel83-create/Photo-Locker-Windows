@@ -65,7 +65,10 @@ private fun readWindowsThemeInfo(): WindowsThemeInfo {
         "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
         "AppsUseLightTheme"
     )
-    val dark = lightSetting?.toIntOrNull()?.let { it == 0 } ?: false
+    val lightValue = lightSetting?.let { raw ->
+        raw.removePrefix("0x").toLongOrNull(16)?.toInt()
+    }
+    val dark = lightValue?.let { it == 0 } ?: false
 
     val accentRaw = queryRegistry("HKCU\\Software\\Microsoft\\Windows\\DWM", "ColorizationColor")
     val accent = accentRaw?.removePrefix("0x")?.toLongOrNull(16)?.let { argb ->
