@@ -248,18 +248,19 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
                                     OutlinedButton(onClick = { menuMediaId = item.id }, enabled = albums.isNotEmpty()) {
                                         Text("Add to album")
                                     }
-                                DropdownMenu(expanded = menuMediaId == item.id, onDismissRequest = { menuMediaId = null }) {
-                                    albums.forEach { album ->
-                                        DropdownMenuItem(
-                                            text = { Text(album.name) },
-                                            onClick = {
-                                                status = try {
-                                                    VaultDatabase(WindowsAppPaths.databaseFile(), session).addMediaToAlbum(item.id, album.id)
-                                                    "Added to album: ${album.name}"
-                                                } catch (ex: Exception) { ex.message ?: "Album assignment failed." }
-                                                menuMediaId = null
-                                            }
-                                        )
+                                    DropdownMenu(expanded = menuMediaId == item.id, onDismissRequest = { menuMediaId = null }) {
+                                        albums.forEach { album ->
+                                            DropdownMenuItem(
+                                                text = { Text(album.name) },
+                                                onClick = {
+                                                    status = try {
+                                                        VaultDatabase(WindowsAppPaths.databaseFile(), session).addMediaToAlbum(item.id, album.id)
+                                                        "Added to album: ${album.name}"
+                                                    } catch (ex: Exception) { ex.message ?: "Album assignment failed." }
+                                                    menuMediaId = null
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
