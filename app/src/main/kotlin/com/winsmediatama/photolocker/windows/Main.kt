@@ -57,9 +57,10 @@ private fun PhotoLockerDesktopApp() {
 
 @Composable
 private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultSession?) -> Unit) {
-    var vaultStatus by remember { mutableStateOf("Vault status: Locked / Not initialized") }
+    val keyFile = WindowsAppPaths.keyFile()
+    var vaultStatus by remember { mutableStateOf(if (java.nio.file.Files.exists(keyFile)) "Vault status: Locked (vault exists)" else "Vault status: Not initialized") }
     var message by remember { mutableStateOf("") }
-    var session by remember { mutableStateOf<UnlockedVaultSession?>(null) }
+    var pinOrPassword by remember { mutableStateOf("") }
     var importedCount by remember { mutableStateOf(0) }
     fun getSession(): UnlockedVaultSession {
         check(System.getProperty("os.name").lowercase().contains("windows")) {
@@ -73,8 +74,12 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
             Text("Your private media vault", style = MaterialTheme.typography.titleLarge)
             Text("Local-first photo and video protection. Encryption core uses AES-256-GCM and Windows user-bound DPAPI key protection.")
             Text(vaultStatus, style = MaterialTheme.typography.titleMedium)
+            val vaultExists = java.nio.file.Files.exists(keyFile)
+            if (vaultExists && session?.isUnlocked != true) {
+                Text("This vault already exists on this Windows account. Use Unlock. PIN/password authentication is not implemented in this build; key access is currently protected by Windows DPAPI.", style = MaterialTheme.typography.bodySmall)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = {
+                Button(enabled = !vaultExists && session?.isUnlocked != true, onClick = {
                     message = try {
                         WindowsAppPaths.ensureVaultDirectories()
                         getSession().initialize()
@@ -86,7 +91,7 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
                         "Initialization failed: ${e.message ?: e.javaClass.simpleName}"
                     }
                 }) { Text("Create Vault") }
-                OutlinedButton(onClick = {
+                OutlinedButton(enabled = vaultExists && session?.isUnlocked != true, onClick = {
                     message = try {
                         getSession().unlock()
                         VaultDatabase(WindowsAppPaths.databaseFile(), getSession()).initialize()
@@ -97,7 +102,7 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
                         "Unlock failed: ${e.message ?: e.javaClass.simpleName}"
                     }
                 }) { Text("Unlock") }
-                OutlinedButton(onClick = {
+                OutlinedButton(enabled = session?.isUnlocked == true, onClick = {
                     session?.lock()
                     vaultStatus = "Vault status: Locked"
                     message = "Vault locked. In-memory key was cleared (best effort)."
