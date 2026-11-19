@@ -111,7 +111,7 @@ private fun PhotoLockerDesktopApp() {
     var selectedPage by remember { mutableStateOf("Home") }
     var themeMode by remember { mutableStateOf(loadThemePreference()) }
     var vaultSession by remember { mutableStateOf<UnlockedVaultSession?>(null) }
-    val pages = listOf("Home", "Gallery", "Albums", "Backup", "Security", "Settings")
+    val pages = listOf("Home", "Gallery", "Albums", "Backup", "Folder Lock", "Security", "Settings")
     var lastActivity by remember { mutableStateOf(System.currentTimeMillis()) }
     DisposableEffect(vaultSession) { onDispose { vaultSession?.lock() } }
     LaunchedEffect(vaultSession) {
@@ -147,6 +147,7 @@ private fun PhotoLockerDesktopApp() {
                 "Gallery" -> GalleryPage(vaultSession)
                 "Albums" -> AlbumsPage(vaultSession)
                 "Backup" -> BackupPage(vaultSession, { vaultSession = it })
+                "Folder Lock" -> FolderLockPage()
                 "Security" -> SecurityPage()
                 "Settings" -> SettingsPage(themeMode, { themeMode = it; saveThemePreference(it) })
                 else -> PlaceholderPage(selectedPage)
