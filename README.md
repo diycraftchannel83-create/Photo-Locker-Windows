@@ -8,7 +8,8 @@
 - Password setup, unlock, lock, and migration from legacy Windows DPAPI key blob.
 - Encrypted media import to UUID destinations; original source files remain unchanged.
 - SQLite metadata database: filenames, MIME types, encrypted-relative paths, and album names are encrypted with AES-GCM. IDs, sizes, timestamps, relationships, and schema remain visible.
-- Gallery with encrypted thumbnails and temporary decrypted photo viewer (cleanup is best-effort).\n- Album create/open/rename/delete, membership assignment, and remove-from-album controls.\n- Five-minute inactivity auto-lock resets on pointer and keyboard events (Windows runtime validation pending).\n- Vault destination folder chooser at vault creation; custom folder/drive selection is persisted in AppData.
+- Gallery with encrypted thumbnails and temporary decrypted photo viewer (cleanup is best-effort).
+- Album create/open/rename/delete, membership assignment, and remove-from-album controls.\n- Five-minute inactivity auto-lock resets on click and keyboard events (Windows runtime validation pending).\n- Vault destination folder chooser at vault creation; custom folder/drive selection is persisted in AppData.
 - Windows MSI/EXE packaging workflow and CI tests.
 
 ## Vault data location and uninstall behavior
