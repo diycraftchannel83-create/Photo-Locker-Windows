@@ -20,6 +20,8 @@ compose.desktop {
         mainClass = "com.winsmediatama.photolocker.windows.MainKt"
         nativeDistributions {
             targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe)
+            // Explicitly include Java SQL APIs in the jlink runtime image used by Windows packages.
+            modules("java.sql", "java.logging")
             packageName = "Photo-Locker-Windows"
             packageVersion = "0.1.0"
             description = "Private encrypted photo and video vault"
