@@ -24,6 +24,7 @@ class VaultBackupEngineTest {
         assertContentEquals(Files.readAllBytes(vault.resolve("vault.key.dpapi")), Files.readAllBytes(restored.resolve("vault.key.dpapi")))
         assertContentEquals(Files.readAllBytes(vault.resolve("media/file.plwenc")), Files.readAllBytes(restored.resolve("media/file.plwenc")))
         assertFails { Files.readAllBytes(restored.resolve(".temporary/plain.tmp")) }
+        assertFails { VaultBackupEngine.restoreBackup(backup, root.resolve("wrong-password-restore"), "wrong-password-123".toCharArray()) }
     }
 
     @Test fun restoreRejectsUnencryptedZipFormat() {
@@ -34,6 +35,8 @@ class VaultBackupEngineTest {
             zip.write(byteArrayOf(1, 2))
             zip.closeEntry()
         }
-        assertFails { VaultBackupEngine.restoreBackup(invalid, root.resolve("restore"), "backup-password-123".toCharArray()) }
+        val encryptedInvalid = root.resolve("invalid.plwbackup")
+        PasswordBackupCrypto.encrypt(invalid, encryptedInvalid, "backup-password-123".toCharArray(), root.resolve("temporary"))
+        assertFails { VaultBackupEngine.restoreBackup(encryptedInvalid, root.resolve("restore"), "backup-password-123".toCharArray()) }
     }
 }
