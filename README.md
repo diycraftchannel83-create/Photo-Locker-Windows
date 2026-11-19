@@ -27,6 +27,11 @@ The vault folder includes `vault.key.dpapi`, `vault.db`, encrypted media, and en
 - AES/GCM/NoPadding
 - SQLite JDBC
 
+## Branding assets
+- Cyber Vault neon-green icon source (editable SVG): `assets/branding/photo-locker-icon.svg`
+- Icon theme: dark teal vault, neon-green security ring, lock, photo/video tiles, and shield mark.
+- The SVG source is committed. Windows `.ico` packaging integration and runtime window/taskbar icon are still pending conversion and Windows validation.
+
 ## Build
 Use JDK 17 and Gradle 8.14. CI runs unit tests and packages Windows MSI/EXE.
 
