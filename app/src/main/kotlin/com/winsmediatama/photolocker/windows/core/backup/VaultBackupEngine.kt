@@ -1,7 +1,5 @@
 package com.winsmediatama.photolocker.windows.core.backup
 
-import com.winsmediatama.photolocker.windows.core.crypto.VaultFileCrypto
-import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -14,7 +12,7 @@ import java.util.zip.ZipOutputStream
 object VaultBackupEngine {
     private const val MANIFEST = "manifest.sha256"
 
-    fun createBackup(vaultDirectory: Path, outputFile: Path, session: UnlockedVaultSession) {
+    fun createBackup(vaultDirectory: Path, outputFile: Path, password: CharArray) {
         require(Files.isDirectory(vaultDirectory)) { "Vault folder does not exist." }
         val files = Files.walk(vaultDirectory).use { walk ->
             walk.filter { Files.isRegularFile(it) && !it.startsWith(vaultDirectory.resolve(".temporary")) }.toList()
@@ -39,12 +37,12 @@ object VaultBackupEngine {
             zip.write(manifestLines.joinToString("\n", postfix = "\n").toByteArray(Charsets.UTF_8))
             zip.closeEntry()
         }
-        session.withKey { key -> VaultFileCrypto.encryptFile(zipTemp, outputFile, key) }
+        PasswordBackupCrypto.encrypt(zipTemp, outputFile, password, tempRoot)
         } finally { Files.deleteIfExists(zipTemp) }
     }
 
     /** Restore only into an empty destination. Decrypts outer backup and verifies manifest before publishing files. */
-    fun restoreBackup(backupFile: Path, destination: Path, session: UnlockedVaultSession) {
+    fun restoreBackup(backupFile: Path, destination: Path, password: CharArray) {
         require(Files.isRegularFile(backupFile)) { "Backup file not found." }
         require(!Files.exists(destination) || Files.list(destination).use { it.findAny().isEmpty }) {
             "Restore destination must be absent or an empty directory."
@@ -52,7 +50,7 @@ object VaultBackupEngine {
         val tempRoot = destination.resolve(".temporary")
         Files.createDirectories(tempRoot)
         val zipTemp = Files.createTempFile(tempRoot, "restore-", ".zip")
-        session.withKey { key -> VaultFileCrypto.decryptFile(backupFile, zipTemp, key) }
+        PasswordBackupCrypto.decrypt(backupFile, zipTemp, password, tempRoot)
         val staging = destination.resolveSibling(destination.fileName.toString() + ".restore-staging")
         if (Files.exists(staging)) deleteTree(staging)
         Files.createDirectories(staging)
