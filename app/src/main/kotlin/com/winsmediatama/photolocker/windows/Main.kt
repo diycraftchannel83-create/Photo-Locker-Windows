@@ -728,16 +728,128 @@ private fun RowScope.FeatureCard(title: String, subtitle: String) {
 
 @Composable
 private fun FolderLockPage() {
+    val prefs = remember { java.util.prefs.Preferences.userNodeForPackage(FolderLockPageMarker::class.java) }
+    var protectedFolders by remember { mutableStateOf(loadFolderLockPaths(prefs)) }
+    var hasPassword by remember { mutableStateOf(prefs.get("passwordHash", "").isNotBlank() && prefs.get("passwordSalt", "").isNotBlank()) }
+    var setupPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var unlockPassword by remember { mutableStateOf("") }
+    var selectedPath by remember { mutableStateOf<String?>(null) }
+    var status by remember { mutableStateOf("") }
+    var showUnlock by remember { mutableStateOf(false) }
+
+    fun persistFolders() {
+        prefs.put("folders", protectedFolders.joinToString("\n"))
+        try { prefs.flush() } catch (_: Exception) { }
+    }
+
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Folder Lock (Non-Encryption)", style = MaterialTheme.typography.titleLarge)
-        Text("Protect access to selected Windows folders with a password gate, without encrypting their contents.")
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Folder Lock module", style = MaterialTheme.typography.titleMedium)
-                Text("The menu is registered. Folder protection, reversible Windows permissions, unlock-to-open Explorer, and recovery-safe auto-lock are planned for the next implementation stage.")
-                Text("Important: this feature will restrict access using Windows permissions, not encryption. It cannot prevent access by administrators or applications that already have permission, and permission changes must include a recovery path.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+        Text("Password-gated folder launcher. Folder contents remain in their original, unencrypted format.")
+        if (!hasPassword) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Set Folder Lock password", style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(setupPassword, { setupPassword = it }, label = { Text("Password (8+ characters)") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), singleLine = true)
+                    OutlinedTextField(confirmPassword, { confirmPassword = it }, label = { Text("Confirm password") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), singleLine = true)
+                    Button(enabled = setupPassword.length >= 8 && setupPassword == confirmPassword, onClick = {
+                        try {
+                            val salt = java.security.SecureRandom().generateSeed(16)
+                            val hash = folderLockHash(setupPassword.toCharArray(), salt)
+                            prefs.put("passwordSalt", java.util.Base64.getEncoder().encodeToString(salt))
+                            prefs.put("passwordHash", java.util.Base64.getEncoder().encodeToString(hash))
+                            prefs.flush()
+                            hasPassword = true
+                            setupPassword = ""; confirmPassword = ""
+                            status = "Folder Lock password saved. It is stored as a salted PBKDF2 hash, not plaintext."
+                        } catch (e: Exception) { status = "Password setup failed: ${e.message}" }
+                    }) { Text("Set Password") }
+                }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    val chooser = JFileChooser().apply { dialogTitle = "Add folder to Folder Lock"; fileSelectionMode = JFileChooser.DIRECTORIES_ONLY; isAcceptAllFileFilterUsed = false }
+                    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                        val path = chooser.selectedFile.toPath().toAbsolutePath().normalize().toString()
+                        if (protectedFolders.none { it.equals(path, true) }) {
+                            protectedFolders = protectedFolders + path
+                            persistFolders()
+                            status = "Folder added to the password-gated list."
+                        } else status = "Folder is already registered."
+                    }
+                }) { Text("Add Folder") }
+                OutlinedButton(onClick = { selectedPath = null; showUnlock = false; unlockPassword = ""; status = "Folder Lock session closed." }) { Text("Close Session") }
+            }
+            if (protectedFolders.isEmpty()) Text("No folders registered. Use Add Folder to select a folder.")
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(protectedFolders) { path ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(java.io.File(path).name.ifBlank { path }, style = MaterialTheme.typography.titleMedium)
+                                Text(path, style = MaterialTheme.typography.bodySmall)
+                                Text("Password gate (not NTFS access restriction)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                            }
+                            Button(onClick = { selectedPath = path; unlockPassword = ""; showUnlock = true }) { Text("Unlock / Open") }
+                            TextButton(onClick = {
+                                protectedFolders = protectedFolders.filterNot { it == path }
+                                persistFolders()
+                                status = "Folder removed from the app's protected list. Windows permissions were not changed."
+                            }) { Text("Remove") }
+                        }
+                    }
+                }
             }
         }
+        if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.primary)
+        Text("Security limitation: this initial implementation gates opening folders from this app only. It does not change NTFS permissions or block direct access through Explorer, other apps, or administrator accounts. Auto-lock on Explorer close and OS-level ACL enforcement are not yet enabled.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    }
+
+    if (showUnlock && selectedPath != null) {
+        AlertDialog(
+            onDismissRequest = { showUnlock = false; unlockPassword = "" },
+            title = { Text("Unlock folder") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(selectedPath!!)
+                    OutlinedTextField(unlockPassword, { unlockPassword = it }, label = { Text("Folder Lock password") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), singleLine = true)
+                }
+            },
+            confirmButton = {
+                Button(enabled = unlockPassword.isNotEmpty(), onClick = {
+                    val salt = prefs.get("passwordSalt", "").let { java.util.Base64.getDecoder().decode(it) }
+                    val expected = prefs.get("passwordHash", "").let { java.util.Base64.getDecoder().decode(it) }
+                    val valid = try { java.security.MessageDigest.isEqual(folderLockHash(unlockPassword.toCharArray(), salt), expected) } catch (_: Exception) { false }
+                    if (valid) {
+                        try {
+                            val folder = java.io.File(selectedPath!!)
+                            if (folder.exists() && folder.isDirectory) {
+                                ProcessBuilder("explorer.exe", folder.absolutePath).start()
+                                status = "Folder opened in Explorer. This is an app password gate only; the folder is not OS-locked."
+                            } else status = "Folder path no longer exists."
+                        } catch (e: Exception) { status = "Could not open Explorer: ${e.message}" }
+                        showUnlock = false
+                    } else status = "Incorrect password."
+                    unlockPassword = ""
+                }) { Text("Unlock & Open") }
+            },
+            dismissButton = { TextButton(onClick = { showUnlock = false; unlockPassword = "" }) { Text("Cancel") } }
+        )
+    }
+}
+
+private object FolderLockPageMarker
+private fun loadFolderLockPaths(prefs: java.util.prefs.Preferences): List<String> =
+    prefs.get("folders", "").split("\n").map { it.trim() }.filter { it.isNotBlank() }.distinct()
+
+private fun folderLockHash(password: CharArray, salt: ByteArray): ByteArray {
+    val spec = javax.crypto.spec.PBEKeySpec(password, salt, 210_000, 256)
+    return try {
+        javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+    } finally {
+        spec.clearPassword()
+        password.fill('\u0000')
     }
 }
 
