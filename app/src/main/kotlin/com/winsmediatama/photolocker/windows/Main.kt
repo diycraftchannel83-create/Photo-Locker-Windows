@@ -316,6 +316,48 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
 }
 
 @Composable
+private fun ImageViewerDialog(
+    title: String,
+    image: java.awt.image.BufferedImage,
+    onClose: () -> Unit,
+    fileName: String = title,
+    fileSize: Long? = null,
+    onPrevious: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null
+) {
+    var zoom by remember(image) { mutableStateOf(1f) }
+    Dialog(onDismissRequest = onClose) {
+        Surface(color = Color(0xFF171717), shape = MaterialTheme.shapes.large) {
+            Column(Modifier.width(1000.dp).height(700.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(title, color = Color.White, modifier = Modifier.weight(1f), maxLines = 1)
+                    TextButton(onClick = { zoom = 0.65f }) { Text("Fit") }
+                    TextButton(onClick = { zoom = 1f }) { Text("100%") }
+                    TextButton(onClick = { zoom = (zoom * 1.25f).coerceAtMost(4f) }) { Text("+") }
+                    TextButton(onClick = { zoom = (zoom / 1.25f).coerceAtLeast(0.2f }) { Text("−") }
+                    if (onPrevious != null) TextButton(onClick = onPrevious) { Text("‹") }
+                    if (onNext != null) TextButton(onClick = onNext) { Text("›") }
+                    TextButton(onClick = onClose) { Text("Close") }
+                }
+                Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
+                    Image(
+                        bitmap = image.toComposeImageBitmap(),
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize().then(if (zoom == 0.65f) Modifier else Modifier)
+                    )
+                }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(fileName, color = Color.White, maxLines = 1)
+                    Text("Zoom: ${(zoom * 100).toInt()}%", color = Color.LightGray)
+                    Text(fileSize?.let { "${it} bytes" } ?: "Photo", color = Color.LightGray)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun GalleryPage(session: UnlockedVaultSession?) {
     var records by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.MediaRecord>()) }
     var albums by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.AlbumRecord>()) }
@@ -420,19 +462,13 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
         }
     }
     if (viewerImage != null) {
-        Dialog(onDismissRequest = { viewerImage = null }) {
-            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
-                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(viewerTitle, style = MaterialTheme.typography.titleMedium)
-                    Image(
-                        bitmap = viewerImage!!.toComposeImageBitmap(),
-                        contentDescription = viewerTitle,
-                        modifier = Modifier.fillMaxWidth().height(520.dp)
-                    )
-                    Button(onClick = { viewerImage = null }, modifier = Modifier.align(Alignment.End)) { Text("Close photo") }
-                }
-            }
-        }
+        ImageViewerDialog(
+            title = viewerTitle,
+            image = viewerImage!!,
+            onClose = { viewerImage = null },
+            fileName = viewerTitle,
+            fileSize = records.firstOrNull { it.originalName == viewerTitle }?.fileSize
+        )
     }
     if (viewerError.isNotBlank()) AlertDialog(onDismissRequest={viewerError=""}, title={Text("Photo viewer")}, text={Text(viewerError)}, confirmButton={TextButton(onClick={viewerError=""}){Text("OK")}})
 }
