@@ -21,6 +21,7 @@ class SecureThumbnailEngine(
     fun createEncryptedThumbnail(encryptedMedia: Path, thumbnailId: String, maxEdge: Int = 360): Path {
         require(maxEdge in 64..2048) { "Thumbnail size is outside the allowed range." }
         Files.createDirectories(thumbnailDirectory)
+        Files.createDirectories(tempRoot)
         val privateTemp = Files.createTempDirectory(tempRoot, "plw-thumb-")
         val plainMedia = privateTemp.resolve("media.tmp")
         val plainThumbnail = privateTemp.resolve("thumbnail.png")
