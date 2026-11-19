@@ -28,6 +28,6 @@ Use JDK 17 and Gradle 8.14. CI runs tests and packages Windows MSI/EXE.
 2. Security core and DPAPI key protection (foundation implemented)
 3. PIN/password and vault unlock lifecycle
 4. Encrypted media import and database
-5. Gallery, albums, viewer, video playback
+5. Basic metadata Gallery and album management UI (implemented; preview/viewer/playback still pending)
 6. Android-compatible portable backup/restore
 7. Security tests, Windows 10 validation, and installer release
