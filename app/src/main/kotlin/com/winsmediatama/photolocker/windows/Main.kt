@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.awt.SwingPanel
 import javax.swing.JLabel
@@ -40,10 +41,80 @@ import javax.swing.filechooser.FileNameExtensionFilter
 fun main() = application {
     try { WindowsAppPaths.cleanupTemporaryFiles() } catch (_: Exception) { }
     Window(onCloseRequest = { exitApplication() }, title = "Photo-Locker Windows") {
-        MaterialTheme {
+        WindowsAdaptiveTheme {
             PhotoLockerDesktopApp()
         }
     }
+}
+
+private data class WindowsThemeInfo(val dark: Boolean, val accent: Color)
+
+private fun readWindowsThemeInfo(): WindowsThemeInfo {
+    fun queryRegistry(key: String, value: String): String? = try {
+        val process = ProcessBuilder("reg", "query", key, "/v", value)
+            .redirectErrorStream(true).start()
+        val output = process.inputStream.bufferedReader().readText()
+        process.waitFor()
+        output.lines().firstOrNull { it.contains(value, ignoreCase = true) }
+            ?.substringAfterLast("REG_DWORD", "")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    } catch (_: Exception) { null }
+
+    val lightSetting = queryRegistry(
+        "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+        "AppsUseLightTheme"
+    )
+    val dark = lightSetting?.toIntOrNull()?.let { it == 0 } ?: false
+
+    val accentRaw = queryRegistry("HKCU\\Software\\Microsoft\\Windows\\DWM", "ColorizationColor")
+    val accent = accentRaw?.removePrefix("0x")?.toLongOrNull(16)?.let { argb ->
+        Color(
+            red = ((argb shr 16) and 0xFF).toFloat() / 255f,
+            green = ((argb shr 8) and 0xFF).toFloat() / 255f,
+            blue = (argb and 0xFF).toFloat() / 255f,
+            alpha = 1f
+        )
+    } ?: Color(0xFF0078D4)
+    return WindowsThemeInfo(dark, accent)
+}
+
+@Composable
+private fun WindowsAdaptiveTheme(content: @Composable () -> Unit) {
+    var info by remember { mutableStateOf(readWindowsThemeInfo()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(5000)
+            info = readWindowsThemeInfo()
+        }
+    }
+    val accent = info.accent
+    val scheme = if (info.dark) darkColorScheme(
+        primary = accent,
+        onPrimary = Color.White,
+        secondary = accent,
+        onSecondary = Color.White,
+        tertiary = accent,
+        surface = Color(0xFF202020),
+        background = Color(0xFF111111),
+        surfaceVariant = Color(0xFF2B2B2B),
+        onSurface = Color(0xFFE6E6E6),
+        onSurfaceVariant = Color(0xFFC8C8C8),
+        outline = Color(0xFF6D6D6D)
+    ) else lightColorScheme(
+        primary = accent,
+        onPrimary = Color.White,
+        secondary = accent,
+        onSecondary = Color.White,
+        tertiary = accent,
+        surface = Color(0xFFFDFDFD),
+        background = Color(0xFFF3F3F3),
+        surfaceVariant = Color(0xFFE5E5E5),
+        onSurface = Color(0xFF1A1A1A),
+        onSurfaceVariant = Color(0xFF454545),
+        outline = Color(0xFF777777)
+    )
+    MaterialTheme(colorScheme = scheme, content = content)
 }
 
 @Composable
