@@ -159,7 +159,9 @@ class VaultDatabase(
     }
 }
 
-data class AlbumRecord(val id: String, val name: String, val createdAt: Long)\n\ndata class MediaRecord(
+data class AlbumRecord(val id: String, val name: String, val createdAt: Long)
+
+data class MediaRecord(
     val id: String,
     val originalName: String,
     val mimeType: String,
