@@ -448,7 +448,7 @@ private fun BackupPage(session: UnlockedVaultSession?, setSession: (UnlockedVaul
                 message = try {
                     val secret = backupPassword.toCharArray()
                     try { VaultBackupEngine.createBackup(WindowsAppPaths.vaultDirectory(), chooser.selectedFile.toPath(), secret) }
-                    finally { secret.fill('\\u0000') }
+                    finally { secret.fill('\u0000') }
                     backupPassword=""; backupConfirm=""
                     "Backup created: encrypted archive and SHA-256 manifest verified for source files."
                 } catch (e: Exception) { "Backup failed: ${e.message ?: e.javaClass.simpleName}" }
