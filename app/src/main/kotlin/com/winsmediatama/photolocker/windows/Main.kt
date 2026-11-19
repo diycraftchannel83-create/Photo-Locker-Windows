@@ -8,6 +8,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.awaitPointerEventScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession
@@ -31,7 +33,21 @@ private fun PhotoLockerDesktopApp() {
     var selectedPage by remember { mutableStateOf("Home") }
     var vaultSession by remember { mutableStateOf<UnlockedVaultSession?>(null) }
     val pages = listOf("Home", "Gallery", "Albums", "Backup", "Security", "Settings")
-    Row(Modifier.fillMaxSize()) {
+    var lastActivity by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(vaultSession) {
+        while (vaultSession?.isUnlocked == true) {
+            kotlinx.coroutines.delay(1000)
+            if (System.currentTimeMillis() - lastActivity >= 5 * 60 * 1000L) {
+                vaultSession?.lock()
+                vaultSession = null
+                selectedPage = "Home"
+                break
+            }
+        }
+    }
+    Row(Modifier.fillMaxSize().pointerInput(Unit) {
+        awaitPointerEventScope { while (true) { awaitPointerEvent(); lastActivity = System.currentTimeMillis() } }
+    }) {
         Column(Modifier.width(220.dp).fillMaxHeight().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("PHOTO-LOCKER", style = MaterialTheme.typography.titleLarge)
             Text("Windows Edition", style = MaterialTheme.typography.labelMedium)
@@ -69,6 +85,7 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
         check(System.getProperty("os.name").lowercase().contains("windows")) { "Vault operations require Windows DPAPI." }
         return session ?: UnlockedVaultSession(store).also { setSession(it) }
     }
+    LaunchedEffect(session) { if (session == null && store.exists()) vaultStatus = "Vault status: Locked (idle timeout or manual lock)" }
     val vaultExists = store.exists()
     val passwordProtected = vaultExists && store.isPasswordProtected()
     if (operation != null) {
