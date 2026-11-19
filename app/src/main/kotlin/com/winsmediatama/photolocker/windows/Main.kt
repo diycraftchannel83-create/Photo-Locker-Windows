@@ -160,7 +160,42 @@ private fun PhotoLockerDesktopApp() {
                 "Albums" -> AlbumsPage(vaultSession)
                 "Backup" -> BackupPage(vaultSession, { vaultSession = it })
                 "Security" -> SecurityPage()
+                "Settings" -> SettingsPage(themeMode, { themeMode = it; saveThemePreference(it) })
                 else -> PlaceholderPage(selectedPage)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPage(themeMode: String, onThemeChange: (String) -> Unit) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Appearance", style = MaterialTheme.typography.titleLarge)
+        Text("Choose how Photo-Locker Windows looks.")
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Theme", style = MaterialTheme.typography.titleMedium)
+                listOf("System", "Light", "Dark").forEach { mode ->
+                    Row(Modifier.fillMaxWidth().clickable { onThemeChange(mode) }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = themeMode == mode, onClick = { onThemeChange(mode) })
+                        Column(Modifier.padding(start = 8.dp)) {
+                            Text(mode)
+                            Text(when(mode) {
+                                "System" -> "Follow Windows light/dark appearance and accent color."
+                                "Light" -> "Always use a bright theme."
+                                else -> "Always use a dark theme."
+                            }, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+        Text("Photo viewer", style = MaterialTheme.typography.titleLarge)
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Viewer controls", style = MaterialTheme.typography.titleMedium)
+                Text("Photos open in a large image-viewer window with Fit, 100%, zoom controls, navigation, and image information.")
             }
         }
     }
