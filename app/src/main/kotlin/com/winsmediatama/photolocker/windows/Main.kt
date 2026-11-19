@@ -330,6 +330,8 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
     var albumName by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var selectedAlbum by remember { mutableStateOf<com.winsmediatama.photolocker.windows.core.database.AlbumRecord?>(null) }
+    var renameAlbumId by remember { mutableStateOf<String?>(null) }
+    var renameValue by remember { mutableStateOf("") }
     var albumMedia by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.MediaRecord>()) }
     fun reload() {
         if (session?.isUnlocked == true) {
@@ -356,6 +358,13 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
                             Text(media.originalName, style = MaterialTheme.typography.titleMedium)
                             Text(media.mimeType)
                             Text("Size: ${media.fileSize} bytes")
+                            TextButton(onClick = {
+                                try {
+                                    VaultDatabase(WindowsAppPaths.databaseFile(), session).removeMediaFromAlbum(media.id, selectedAlbum!!.id)
+                                    albumMedia = VaultDatabase(WindowsAppPaths.databaseFile(), session).listMediaForAlbum(selectedAlbum!!.id)
+                                    message = "Removed from album. The encrypted media file was not deleted."
+                                } catch (e: Exception) { message = e.message ?: "Could not remove media from album." }
+                            }) { Text("Remove from album") }
                         }
                     }
                 }
@@ -385,6 +394,14 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
                                 albumMedia = try { VaultDatabase(WindowsAppPaths.databaseFile(), session).listMediaForAlbum(album.id) }
                                 catch (e: Exception) { message = e.message ?: "Could not open album."; emptyList() }
                             }) { Text("Open") }
+                            OutlinedButton(onClick = { renameAlbumId = album.id; renameValue = album.name }) { Text("Rename") }
+                            OutlinedButton(onClick = {
+                                try {
+                                    VaultDatabase(WindowsAppPaths.databaseFile(), session).deleteAlbum(album.id)
+                                    reload()
+                                    message = "Album deleted. Media files remain in the vault."
+                                } catch (e: Exception) { message = e.message ?: "Could not delete album." }
+                            }) { Text("Delete") }
                         }
                     }
                 }
@@ -393,6 +410,24 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
     }
 }
 
+    if (renameAlbumId != null) {
+        AlertDialog(
+            onDismissRequest = { renameAlbumId = null },
+            title = { Text("Rename album") },
+            text = { OutlinedTextField(value = renameValue, onValueChange = { renameValue = it }, label = { Text("New album name") }, singleLine = true) },
+            confirmButton = {
+                Button(onClick = {
+                    try {
+                        VaultDatabase(WindowsAppPaths.databaseFile(), session!!).renameAlbum(renameAlbumId!!, renameValue)
+                        renameAlbumId = null
+                        reload()
+                        message = "Album renamed."
+                    } catch (e: Exception) { message = e.message ?: "Could not rename album." }
+                }, enabled = renameValue.trim().isNotEmpty()) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { renameAlbumId = null }) { Text("Cancel") } }
+        )
+    }
 @Composable
 private fun SecurityPage() {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
