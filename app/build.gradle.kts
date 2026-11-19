@@ -12,6 +12,7 @@ dependencies {
     implementation(compose.materialIconsExtended)
     implementation("net.java.dev.jna:jna:5.16.0")
     implementation("net.java.dev.jna:jna-platform:5.16.0")
+    implementation("org.xerial:sqlite-jdbc:3.50.3.0")
     testImplementation(kotlin("test"))
 }
 compose.desktop {
