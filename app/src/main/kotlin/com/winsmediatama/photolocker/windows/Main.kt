@@ -21,7 +21,7 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 fun main() = application {
-    Window(onCloseRequest = { vaultSession?.lock(); exitApplication() }, title = "Photo-Locker Windows") {
+    Window(onCloseRequest = { exitApplication() }, title = "Photo-Locker Windows") {
         MaterialTheme {
             PhotoLockerDesktopApp()
         }
@@ -34,6 +34,7 @@ private fun PhotoLockerDesktopApp() {
     var vaultSession by remember { mutableStateOf<UnlockedVaultSession?>(null) }
     val pages = listOf("Home", "Gallery", "Albums", "Backup", "Security", "Settings")
     var lastActivity by remember { mutableStateOf(System.currentTimeMillis()) }
+    DisposableEffect(vaultSession) { onDispose { vaultSession?.lock() } }
     LaunchedEffect(vaultSession) {
         while (vaultSession?.isUnlocked == true) {
             kotlinx.coroutines.delay(1000)
@@ -46,7 +47,12 @@ private fun PhotoLockerDesktopApp() {
         }
     }
     Row(Modifier.fillMaxSize().pointerInput(Unit) {
-        awaitPointerEventScope { while (true) { awaitPointerEvent(); lastActivity = System.currentTimeMillis() } }
+        awaitPointerEventScope {
+            while (true) {
+                awaitPointerEvent()
+                lastActivity = System.currentTimeMillis()
+            }
+        }
     }) {
         Column(Modifier.width(220.dp).fillMaxHeight().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("PHOTO-LOCKER", style = MaterialTheme.typography.titleLarge)
