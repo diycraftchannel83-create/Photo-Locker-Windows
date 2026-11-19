@@ -43,9 +43,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 fun main() = application {
     try { WindowsAppPaths.cleanupTemporaryFiles() } catch (_: Exception) { }
     Window(onCloseRequest = { exitApplication() }, title = "Photo-Locker Windows") {
-        WindowsAdaptiveTheme {
-            PhotoLockerDesktopApp()
-        }
+        PhotoLockerDesktopApp()
     }
 }
 
