@@ -19,7 +19,7 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "Photo-Locker Windows") {
+    Window(onCloseRequest = { vaultSession?.lock(); exitApplication() }, title = "Photo-Locker Windows") {
         MaterialTheme {
             PhotoLockerDesktopApp()
         }
@@ -116,7 +116,7 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Your private media vault", style = MaterialTheme.typography.titleLarge)
-            Text("Local-first photo and video protection. Media uses AES-256-GCM. Vault password is protected with PBKDF2-HMAC-SHA256 and AES-GCM.")
+            Text("Local-first photo and video protection. Media uses AES-256-GCM. Vault password is protected with PBKDF2-HMAC-SHA256 and AES-GCM.")\n            Text("Important: uninstalling the application should not delete your vault. Vault data is stored separately in your Windows user AppData folder. Back up your vault before reinstalling Windows or deleting user data.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.tertiary)
             Text(vaultStatus, style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(enabled=!vaultExists && session?.isUnlocked!=true, onClick={operation="create"}) { Text("Create Vault") }
