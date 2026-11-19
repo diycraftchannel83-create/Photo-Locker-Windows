@@ -15,7 +15,7 @@ object VaultBackupEngine {
     fun createBackup(vaultDirectory: Path, outputFile: Path) {
         require(Files.isDirectory(vaultDirectory)) { "Vault folder does not exist." }
         val files = Files.walk(vaultDirectory).use { walk ->
-            walk.filter { Files.isRegularFile(it) }.toList()
+            walk.filter { Files.isRegularFile(it) && !it.startsWith(vaultDirectory.resolve(".temporary")) }.toList()
         }.sortedBy { vaultDirectory.relativize(it).toString() }
         require(files.isNotEmpty()) { "Vault contains no files to back up." }
         val manifestLines = files.map { file ->
