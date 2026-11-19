@@ -279,18 +279,25 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
                     message=try {
                         val chooser=JFileChooser().apply {
                             isMultiSelectionEnabled=true
-                            dialogTitle="Import photos and videos into encrypted vault"
+                            dialogTitle="Move photos and videos into encrypted vault"
                             fileFilter=FileNameExtensionFilter("Media files","jpg","jpeg","png","webp","gif","heic","heif","mp4","mov","mkv","avi")
                         }
                         if(chooser.showOpenDialog(null)==JFileChooser.APPROVE_OPTION) {
-                            val db=VaultDatabase(WindowsAppPaths.databaseFile(),getSession()); db.initialize()
-                            val engine=MediaImportEngine(getSession(),db,WindowsAppPaths.encryptedMediaDirectory())
-                            val results=chooser.selectedFiles.map{engine.importFile(it.toPath())}
-                            importedCount=db.countMedia()
-                            "Encrypted import completed: ${results.size} file(s)."
-                        } else "Import cancelled."
-                    } catch(e:Exception) { "Import failed: ${e.message ?: e.javaClass.simpleName}" }
-                }) { Text("Import Photos / Videos") }
+                            val selected=chooser.selectedFiles
+                            val confirm=javax.swing.JOptionPane.showConfirmDialog(null,
+                                "Selected ${selected.size} file(s) will be encrypted into your vault. Originals will be deleted only after successful import. Continue?",
+                                "Move media into vault",javax.swing.JOptionPane.YES_NO_OPTION,javax.swing.JOptionPane.WARNING_MESSAGE)
+                            if(confirm==javax.swing.JOptionPane.YES_OPTION) {
+                                val db=VaultDatabase(WindowsAppPaths.databaseFile(),getSession()); db.initialize()
+                                val engine=MediaImportEngine(getSession(),db,WindowsAppPaths.encryptedMediaDirectory())
+                                var success=0; var failed=0
+                                selected.forEach { file -> try { engine.importFile(file.toPath()); success++ } catch (_:Exception) { failed++ } }
+                                importedCount=db.countMedia()
+                                "Move completed: $success file(s) moved; $failed failed. Failed files remain at source."
+                            } else "Move cancelled. Originals were not changed."
+                        } else "Move cancelled."
+                    } catch(e:Exception) { "Move failed: ${e.message ?: e.javaClass.simpleName}" }
+                }) { Text("Move Photos / Videos into Vault") }
                 Text("Encrypted media count: $importedCount")
                 Text("Metadata warning: filenames and media metadata currently reside in unencrypted SQLite.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)
             }
