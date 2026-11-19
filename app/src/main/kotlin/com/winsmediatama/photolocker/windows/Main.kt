@@ -136,6 +136,93 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
     }
 }
 
+
+@Composable
+private fun GalleryPage(session: UnlockedVaultSession?) {
+    var records by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.MediaRecord>()) }
+    var error by remember { mutableStateOf("") }
+    LaunchedEffect(session) {
+        records = emptyList()
+        error = ""
+        if (session?.isUnlocked == true) {
+            try {
+                records = VaultDatabase(WindowsAppPaths.databaseFile(), session).listMedia()
+            } catch (e: Exception) {
+                error = e.message ?: "Could not load gallery."
+            }
+        }
+    }
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Encrypted media library", style = MaterialTheme.typography.titleLarge)
+        if (session?.isUnlocked != true) {
+            Text("Unlock your vault from Home to view imported media metadata.")
+        } else if (error.isNotBlank()) {
+            Text(error, color = MaterialTheme.colorScheme.error)
+        } else if (records.isEmpty()) {
+            Text("No media imported yet. Use Home → Import Photos / Videos.")
+        } else {
+            Text("${records.size} item(s)")
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(records) { item ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(item.originalName, style = MaterialTheme.typography.titleMedium)
+                            Text(item.mimeType)
+                            Text("Size: ${item.fileSize} bytes")
+                            Text("Imported: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(item.importedAt))}")
+                            Text("ID: ${item.id}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlbumsPage(session: UnlockedVaultSession?) {
+    var albums by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.AlbumRecord>()) }
+    var albumName by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    fun reload() {
+        if (session?.isUnlocked == true) {
+            albums = try { VaultDatabase(WindowsAppPaths.databaseFile(), session).listAlbums() }
+            catch (e: Exception) { message = e.message ?: "Could not load albums." }
+        } else albums = emptyList()
+    }
+    LaunchedEffect(session) { reload() }
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Albums", style = MaterialTheme.typography.titleLarge)
+        if (session?.isUnlocked != true) {
+            Text("Unlock your vault from Home to manage albums.")
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(value = albumName, onValueChange = { albumName = it }, label = { Text("Album name") }, modifier = Modifier.weight(1f))
+                Button(onClick = {
+                    message = try {
+                        VaultDatabase(WindowsAppPaths.databaseFile(), session).createAlbum(albumName)
+                        albumName = ""
+                        reload()
+                        "Album created."
+                    } catch (e: Exception) { e.message ?: "Could not create album." }
+                }, enabled = albumName.trim().isNotEmpty()) { Text("Create") }
+            }
+            if (message.isNotBlank()) Text(message)
+            if (albums.isEmpty()) Text("No albums created yet.")
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(albums) { album ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text(album.name, style = MaterialTheme.typography.titleMedium)
+                            Text("Created: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(album.createdAt))}")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SecurityPage() {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
