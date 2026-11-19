@@ -81,7 +81,7 @@ private fun PhotoLockerDesktopApp() {
                 "Home" -> HomePage(vaultSession, { vaultSession = it })
                 "Gallery" -> GalleryPage(vaultSession)
                 "Albums" -> AlbumsPage(vaultSession)
-                "Backup" -> BackupPage(vaultSession)
+                "Backup" -> BackupPage(vaultSession, { vaultSession = it })
                 "Security" -> SecurityPage()
                 else -> PlaceholderPage(selectedPage)
             }
@@ -433,7 +433,7 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
 }
 
 @Composable
-private fun BackupPage(session: UnlockedVaultSession?) {
+private fun BackupPage(session: UnlockedVaultSession?, setSession: (UnlockedVaultSession?) -> Unit) {
     var message by remember { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Encrypted vault backup", style = MaterialTheme.typography.titleLarge)
@@ -456,7 +456,9 @@ private fun BackupPage(session: UnlockedVaultSession?) {
                     message = try {
                         VaultBackupEngine.restoreBackup(fileChooser.selectedFile.toPath(), target)
                         WindowsAppPaths.setVaultDirectory(target)
-                        "Restore complete and integrity checks passed. Restart the app or unlock the restored vault."
+                        session?.lock()
+                        setSession(null)
+                        "Restore complete and integrity checks passed. Unlock the restored vault from Home."
                     } catch (e: Exception) { "Restore failed: ${e.message ?: e.javaClass.simpleName}" }
                 }
             }
