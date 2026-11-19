@@ -10,6 +10,9 @@ import javax.swing.JLabel
 import javax.swing.ImageIcon
 import javax.imageio.ImageIO
 import com.winsmediatama.photolocker.windows.core.media.SecureMediaViewerTemp
+import com.winsmediatama.photolocker.windows.core.media.SecureThumbnailEngine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -206,6 +209,8 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
     var viewerTemp by remember { mutableStateOf<SecureMediaViewerTemp?>(null) }
     var viewerError by remember { mutableStateOf("") }
     var viewerTitle by remember { mutableStateOf("") }
+    var thumbnailImages by remember { mutableStateOf<Map<String, java.awt.image.BufferedImage>>(emptyMap()) }
+    var thumbnailMessage by remember { mutableStateOf("") }
     DisposableEffect(viewerTemp) { onDispose { viewerTemp?.close() } }
     LaunchedEffect(session) {
         records = emptyList(); albums = emptyList(); error = ""; status = ""
@@ -217,8 +222,28 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
             } catch (e: Exception) { error = e.message ?: "Could not load gallery." }
         }
     }
+    LaunchedEffect(session, records) {
+        thumbnailImages = emptyMap()
+        thumbnailMessage = ""
+        if (session?.isUnlocked == true) {
+            thumbnailImages = withContext(Dispatchers.IO) {
+                val engine = SecureThumbnailEngine(session, WindowsAppPaths.thumbnailDirectory())
+                val loaded = mutableMapOf<String, java.awt.image.BufferedImage>()
+                records.filter { it.mimeType.startsWith("image/") }.forEach { media ->
+                    try {
+                        val source = WindowsAppPaths.encryptedMediaDirectory().resolve(media.encryptedRelativePath.substringAfterLast('/'))
+                        val encryptedThumb = WindowsAppPaths.thumbnailDirectory().resolve("${media.id}.plwthumb")
+                        if (!java.nio.file.Files.exists(encryptedThumb)) engine.createEncryptedThumbnail(source, media.id)
+                        loaded[media.id] = engine.loadEncryptedThumbnailPreview(encryptedThumb)
+                    } catch (_: Exception) { /* unsupported image format or preview failure; viewer remains available */ }
+                }
+                loaded
+            }
+        }
+    }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Encrypted media library", style = MaterialTheme.typography.titleLarge)
+        Text("Thumbnails are stored encrypted; preview images are loaded into memory after temporary-file cleanup.", style = MaterialTheme.typography.bodySmall)
         if (session?.isUnlocked != true) {
             Text("Unlock your vault from Home to view imported media.")
         } else if (error.isNotBlank()) {
@@ -232,6 +257,9 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
                 items(records) { item ->
                     Card(Modifier.fillMaxWidth()) {
                         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            thumbnailImages[item.id]?.let { preview ->
+                                SwingPanel(modifier = Modifier.size(120.dp), factory = { JLabel(ImageIcon(preview)) })
+                            }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(item.originalName, style = MaterialTheme.typography.titleMedium)
                                 Text(item.mimeType)
