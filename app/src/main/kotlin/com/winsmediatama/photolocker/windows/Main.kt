@@ -198,6 +198,7 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
     var viewerTemp by remember { mutableStateOf<SecureMediaViewerTemp?>(null) }
     var viewerError by remember { mutableStateOf("") }
     var viewerTitle by remember { mutableStateOf("") }
+    DisposableEffect(viewerTemp) { onDispose { viewerTemp?.close() } }
     LaunchedEffect(session) {
         records = emptyList(); albums = emptyList(); error = ""; status = ""
         if (session?.isUnlocked == true) {
@@ -229,10 +230,24 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
                                 Text("Size: ${item.fileSize} bytes")
                                 Text("Imported: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(item.importedAt))}")
                             }
-                            Box {
-                                OutlinedButton(onClick = { menuMediaId = item.id }, enabled = albums.isNotEmpty()) {
-                                    Text("Add to album")
+                            Column(horizontalAlignment = Alignment.End) {
+                                if (item.mimeType.startsWith("image/")) {
+                                    TextButton(onClick = {
+                                        viewerError = ""
+                                        viewerTitle = item.originalName
+                                        viewerTemp = try {
+                                            val encrypted = WindowsAppPaths.encryptedMediaDirectory().resolve(item.encryptedRelativePath.substringAfterLast('/'))
+                                            SecureMediaViewerTemp.open(session, encrypted)
+                                        } catch (ex: Exception) {
+                                            viewerError = ex.message ?: "Unable to open photo."
+                                            null
+                                        }
+                                    }) { Text("View photo") }
                                 }
+                                Box {
+                                    OutlinedButton(onClick = { menuMediaId = item.id }, enabled = albums.isNotEmpty()) {
+                                        Text("Add to album")
+                                    }
                                 DropdownMenu(expanded = menuMediaId == item.id, onDismissRequest = { menuMediaId = null }) {
                                     albums.forEach { album ->
                                         DropdownMenuItem(
