@@ -236,14 +236,24 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
             thumbnailImages = withContext(Dispatchers.IO) {
                 val engine = SecureThumbnailEngine(session, WindowsAppPaths.thumbnailDirectory(), WindowsAppPaths.temporaryDirectory())
                 val loaded = mutableMapOf<String, java.awt.image.BufferedImage>()
+                var failed = 0
                 records.filter { it.mimeType.startsWith("image/") }.forEach { media ->
                     try {
                         val source = WindowsAppPaths.encryptedMediaDirectory().resolve(media.encryptedRelativePath.substringAfterLast('/'))
                         val encryptedThumb = WindowsAppPaths.thumbnailDirectory().resolve("${media.id}.plwthumb")
-                        if (!java.nio.file.Files.exists(encryptedThumb)) engine.createEncryptedThumbnail(source, media.id)
-                        loaded[media.id] = engine.loadEncryptedThumbnailPreview(encryptedThumb)
-                    } catch (_: Exception) { /* unsupported image format or preview failure; viewer remains available */ }
+                        var preview: java.awt.image.BufferedImage? = null
+                        if (java.nio.file.Files.exists(encryptedThumb)) {
+                            try { preview = engine.loadEncryptedThumbnailPreview(encryptedThumb) }
+                            catch (_: Exception) { java.nio.file.Files.deleteIfExists(encryptedThumb) }
+                        }
+                        if (preview == null) {
+                            engine.createEncryptedThumbnail(source, media.id)
+                            preview = engine.loadEncryptedThumbnailPreview(encryptedThumb)
+                        }
+                        loaded[media.id] = preview
+                    } catch (_: Exception) { failed++ }
                 }
+                thumbnailMessage = if (failed > 0) "$" + "failed photo thumbnail(s) could not be generated." else ""
                 loaded
             }
         }
