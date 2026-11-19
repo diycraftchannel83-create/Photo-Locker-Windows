@@ -144,6 +144,32 @@ class VaultDatabase(
         }
     }
 
+    fun listMediaForAlbum(albumId: String): List<MediaRecord> = guarded {
+        connection().use { conn ->
+            conn.prepareStatement("""
+                SELECT m.id, m.original_name, m.mime_type, m.file_size, m.imported_at, m.encrypted_relative_path
+                FROM media m
+                INNER JOIN media_album ma ON ma.media_id = m.id
+                WHERE ma.album_id = ?
+                ORDER BY m.imported_at DESC
+            """.trimIndent()).use { ps ->
+                ps.setString(1, albumId)
+                ps.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) add(MediaRecord(
+                            id = rs.getString("id"),
+                            originalName = rs.getString("original_name"),
+                            mimeType = rs.getString("mime_type"),
+                            fileSize = rs.getLong("file_size"),
+                            importedAt = rs.getLong("imported_at"),
+                            encryptedRelativePath = rs.getString("encrypted_relative_path")
+                        ))
+                    }
+                }
+            }
+        }
+    }
+
     fun countMedia(): Int = guarded {
         connection().use { conn ->
             conn.createStatement().use { st ->
