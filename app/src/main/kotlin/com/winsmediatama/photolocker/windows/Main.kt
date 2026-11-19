@@ -260,57 +260,37 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
         } else {
             Text("${records.size} item(s) • Album assignment available")
             if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.primary)
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyVerticalGrid(columns = GridCells.Adaptive(190.dp), modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(records) { item ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Card(Modifier.fillMaxWidth().clickable {
+                        if (item.mimeType.startsWith("image/")) {
+                            viewerError = ""
+                            viewerTitle = item.originalName
+                            viewerImage = try {
+                                val encrypted = WindowsAppPaths.encryptedMediaDirectory().resolve(item.encryptedRelativePath.substringAfterLast('/'))
+                                val temp = SecureMediaViewerTemp.open(session, encrypted, WindowsAppPaths.temporaryDirectory())
+                                try { ImageIO.read(temp.path.toFile()) ?: throw IllegalArgumentException("Unsupported image format.") }
+                                finally { temp.close() }
+                            } catch (ex: Exception) { viewerError = ex.message ?: "Unable to open photo."; null }
+                        }
+                    }) {
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             thumbnailImages[item.id]?.let { preview ->
-                                SwingPanel(modifier = Modifier.size(120.dp), factory = { JLabel(ImageIcon(preview)) })
-                            }
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(item.originalName, style = MaterialTheme.typography.titleMedium)
-                                Text(item.mimeType)
-                                Text("Size: ${item.fileSize} bytes")
-                                Text("Imported: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(item.importedAt))}")
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                if (item.mimeType.startsWith("image/")) {
-                                    TextButton(onClick = {
-                                        viewerError = ""
-                                        viewerTitle = item.originalName
-                                        viewerImage = try {
-                                            val encrypted = WindowsAppPaths.encryptedMediaDirectory().resolve(item.encryptedRelativePath.substringAfterLast('/'))
-                                            val temp = SecureMediaViewerTemp.open(session, encrypted, WindowsAppPaths.temporaryDirectory())
-                                            try {
-                                                ImageIO.read(temp.path.toFile())
-                                                    ?: throw IllegalArgumentException("Image format is not supported by the viewer.")
-                                            } finally {
-                                                temp.close()
-                                            }
-                                        } catch (ex: Exception) {
-                                            viewerError = ex.message ?: "Unable to open photo."
-                                            null
-                                        }
-                                    }) { Text("View photo") }
-                                }
-                                Box {
-                                    OutlinedButton(onClick = { menuMediaId = item.id }, enabled = albums.isNotEmpty()) {
-                                        Text("Add to album")
-                                    }
-                                    DropdownMenu(expanded = menuMediaId == item.id, onDismissRequest = { menuMediaId = null }) {
-                                        albums.forEach { album ->
-                                            DropdownMenuItem(
-                                                text = { Text(album.name) },
-                                                onClick = {
-                                                    status = try {
-                                                        VaultDatabase(WindowsAppPaths.databaseFile(), session).addMediaToAlbum(item.id, album.id)
-                                                        "Added to album: ${album.name}"
-                                                    } catch (ex: Exception) { ex.message ?: "Album assignment failed." }
-                                                    menuMediaId = null
-                                                }
-                                            )
-                                        }
-                                    }
+                                Image(bitmap=preview.toComposeImageBitmap(), contentDescription=item.originalName, modifier=Modifier.fillMaxWidth().height(150.dp))
+                            } ?: Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment=Alignment.Center) { Text("No preview") }
+                            Text(item.originalName, style=MaterialTheme.typography.titleSmall, maxLines=2)
+                            Text(item.mimeType, style=MaterialTheme.typography.bodySmall)
+                            Text("Size: ${item.fileSize} bytes", style=MaterialTheme.typography.bodySmall)
+                            TextButton(onClick={menuMediaId=item.id}, enabled=albums.isNotEmpty()) { Text("Add to album") }
+                            DropdownMenu(expanded=menuMediaId==item.id,onDismissRequest={menuMediaId=null}) {
+                                albums.forEach { album ->
+                                    DropdownMenuItem(text={Text(album.name)},onClick={
+                                        status=try {
+                                            VaultDatabase(WindowsAppPaths.databaseFile(),session).addMediaToAlbum(item.id,album.id)
+                                            "Added to album: ${album.name}"
+                                        } catch(ex:Exception){ex.message ?: "Album assignment failed."}
+                                        menuMediaId=null
+                                    })
                                 }
                             }
                         }
