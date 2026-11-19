@@ -106,6 +106,44 @@ class VaultDatabase(
         }
     }
 
+
+    fun listAlbums(): List<AlbumRecord> = guarded {
+        connection().use { conn ->
+            conn.prepareStatement("SELECT id, name, created_at FROM albums ORDER BY name COLLATE NOCASE").use { ps ->
+                ps.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) add(AlbumRecord(rs.getString("id"), rs.getString("name"), rs.getLong("created_at")))
+                    }
+                }
+            }
+        }
+    }
+
+    fun createAlbum(name: String): AlbumRecord = guarded {
+        val cleanName = name.trim().take(128)
+        require(cleanName.isNotBlank()) { "Album name cannot be empty." }
+        val album = AlbumRecord(UUID.randomUUID().toString(), cleanName, System.currentTimeMillis())
+        connection().use { conn ->
+            conn.prepareStatement("INSERT INTO albums(id, name, created_at) VALUES(?,?,?)").use { ps ->
+                ps.setString(1, album.id)
+                ps.setString(2, album.name)
+                ps.setLong(3, album.createdAt)
+                ps.executeUpdate()
+            }
+        }
+        album
+    }
+
+    fun addMediaToAlbum(mediaId: String, albumId: String) = guarded {
+        connection().use { conn ->
+            conn.prepareStatement("INSERT OR IGNORE INTO media_album(media_id, album_id) VALUES(?,?)").use { ps ->
+                ps.setString(1, mediaId)
+                ps.setString(2, albumId)
+                ps.executeUpdate()
+            }
+        }
+    }
+
     fun countMedia(): Int = guarded {
         connection().use { conn ->
             conn.createStatement().use { st ->
@@ -121,7 +159,7 @@ class VaultDatabase(
     }
 }
 
-data class MediaRecord(
+data class AlbumRecord(val id: String, val name: String, val createdAt: Long)\n\ndata class MediaRecord(
     val id: String,
     val originalName: String,
     val mimeType: String,
