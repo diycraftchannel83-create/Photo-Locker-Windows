@@ -727,6 +727,21 @@ private fun RowScope.FeatureCard(title: String, subtitle: String) {
 }
 
 @Composable
+private fun FolderLockPage() {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Folder Lock (Non-Encryption)", style = MaterialTheme.typography.titleLarge)
+        Text("Protect access to selected Windows folders with a password gate, without encrypting their contents.")
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Folder Lock module", style = MaterialTheme.typography.titleMedium)
+                Text("The menu is registered. Folder protection, reversible Windows permissions, unlock-to-open Explorer, and recovery-safe auto-lock are planned for the next implementation stage.")
+                Text("Important: this feature will restrict access using Windows permissions, not encryption. It cannot prevent access by administrators or applications that already have permission, and permission changes must include a recovery path.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+            }
+        }
+    }
+}
+
+@Composable
 private fun PlaceholderPage(page: String) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text("$page module is planned for a future milestone.", style = MaterialTheme.typography.bodyLarge)
