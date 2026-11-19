@@ -73,6 +73,8 @@ private fun HomePage() {
                     message = try {
                         WindowsAppPaths.ensureVaultDirectories()
                         getSession().initialize()
+                        VaultDatabase(WindowsAppPaths.databaseFile(), getSession()).initialize()
+                        importedCount = VaultDatabase(WindowsAppPaths.databaseFile(), getSession()).countMedia()
                         vaultStatus = "Vault status: Unlocked (new vault)"
                         "Vault initialized. Key created and protected by Windows DPAPI."
                     } catch (e: Exception) {
@@ -82,6 +84,8 @@ private fun HomePage() {
                 OutlinedButton(onClick = {
                     message = try {
                         getSession().unlock()
+                        VaultDatabase(WindowsAppPaths.databaseFile(), getSession()).initialize()
+                        importedCount = VaultDatabase(WindowsAppPaths.databaseFile(), getSession()).countMedia()
                         vaultStatus = "Vault status: Unlocked"
                         "Vault unlocked successfully."
                     } catch (e: Exception) {
