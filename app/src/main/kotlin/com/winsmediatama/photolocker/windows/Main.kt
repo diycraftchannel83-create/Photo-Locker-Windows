@@ -1,6 +1,6 @@
 package com.winsmediatama.photolocker.windows
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.*\nimport androidx.compose.foundation.lazy.LazyColumn\nimport androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,7 +26,7 @@ fun main() = application {
 
 @Composable
 private fun PhotoLockerDesktopApp() {
-    var selectedPage by remember { mutableStateOf("Home") }
+    var selectedPage by remember { mutableStateOf("Home") }\n    var vaultSession by remember { mutableStateOf<UnlockedVaultSession?>(null) }
     val pages = listOf("Home", "Gallery", "Albums", "Backup", "Security", "Settings")
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(220.dp).fillMaxHeight().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -42,7 +42,7 @@ private fun PhotoLockerDesktopApp() {
         Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(selectedPage, style = MaterialTheme.typography.headlineMedium)
             when (selectedPage) {
-                "Home" -> HomePage()
+                "Home" -> HomePage(vaultSession, { vaultSession = it })\n                "Gallery" -> GalleryPage(vaultSession)\n                "Albums" -> AlbumsPage(vaultSession)
                 "Security" -> SecurityPage()
                 else -> PlaceholderPage(selectedPage)
             }
@@ -51,7 +51,7 @@ private fun PhotoLockerDesktopApp() {
 }
 
 @Composable
-private fun HomePage() {
+private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultSession?) -> Unit) {
     var vaultStatus by remember { mutableStateOf("Vault status: Locked / Not initialized") }
     var message by remember { mutableStateOf("") }
     var session by remember { mutableStateOf<UnlockedVaultSession?>(null) }
@@ -61,7 +61,7 @@ private fun HomePage() {
             "Vault initialization and unlock require Windows DPAPI."
         }
         val store = WindowsVaultKeyStore(WindowsAppPaths.keyFile())
-        return session ?: UnlockedVaultSession(store).also { session = it }
+        return session ?: UnlockedVaultSession(store).also { setSession(it) }
     }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
