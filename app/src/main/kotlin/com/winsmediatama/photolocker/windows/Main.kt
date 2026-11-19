@@ -324,7 +324,7 @@ private fun ImageViewerDialog(
                     TextButton(onClick = { zoom = 1f }) { Text("Fit") }
                     TextButton(onClick = { zoom = 1f }) { Text("100%") }
                     TextButton(onClick = { zoom = (zoom * 1.25f).coerceAtMost(4f) }) { Text("+") }
-                    TextButton(onClick = { zoom = (zoom / 1.25f).coerceAtLeast(0.2f }) { Text("−") }
+                    TextButton(onClick = { zoom = (zoom / 1.25f).coerceAtLeast(0.2f) }) { Text("−") }
                     if (onPrevious != null) TextButton(onClick = onPrevious) { Text("‹") }
                     if (onNext != null) TextButton(onClick = onNext) { Text("›") }
                     TextButton(onClick = onClose) { Text("Close") }
