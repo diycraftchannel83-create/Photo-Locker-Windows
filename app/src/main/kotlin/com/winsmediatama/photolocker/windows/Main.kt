@@ -254,7 +254,7 @@ private fun SecurityPage() {
         Text("• Windows DPAPI protected key file")
         Text("• Key held in memory only while unlocked (best-effort JVM zeroization)")
         Text("• UI vault initialization, unlock, and lock controls integrated")
-        Text("PIN/password authentication and secure thumbnail/cache lifecycle are not yet implemented. SQLite metadata is currently stored unencrypted; encrypted media import is implemented.")
+        Text("Password protection now uses PBKDF2-HMAC-SHA256 with a random salt and AES-GCM wrapping for the vault key. Legacy DPAPI vaults can be migrated without re-encrypting media. SQLite metadata is still unencrypted, and secure thumbnail/cache lifecycle is not implemented.")
     }
 }
 
