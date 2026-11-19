@@ -327,6 +327,25 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
     var renameAlbumId by remember { mutableStateOf<String?>(null) }
     var renameValue by remember { mutableStateOf("") }
     var albumMedia by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.MediaRecord>()) }
+    var albumThumbnails by remember { mutableStateOf<Map<String, java.awt.image.BufferedImage>>(emptyMap()) }
+    LaunchedEffect(session, selectedAlbum, albumMedia) {
+        albumThumbnails = emptyMap()
+        if (session?.isUnlocked == true && selectedAlbum != null) {
+            albumThumbnails = withContext(Dispatchers.IO) {
+                val engine = SecureThumbnailEngine(session, WindowsAppPaths.thumbnailDirectory(), WindowsAppPaths.temporaryDirectory())
+                val result = mutableMapOf<String, java.awt.image.BufferedImage>()
+                albumMedia.filter { it.mimeType.startsWith("image/") }.forEach { media ->
+                    try {
+                        val encryptedSource = WindowsAppPaths.encryptedMediaDirectory().resolve(media.encryptedRelativePath.substringAfterLast('/'))
+                        val thumbFile = WindowsAppPaths.thumbnailDirectory().resolve("${media.id}.plwthumb")
+                        if (!java.nio.file.Files.exists(thumbFile)) engine.createEncryptedThumbnail(encryptedSource, media.id)
+                        result[media.id] = engine.loadEncryptedThumbnailPreview(thumbFile)
+                    } catch (_: Exception) { }
+                }
+                result
+            }
+        }
+    }
     fun reload() {
         if (session?.isUnlocked == true) {
             albums = try { VaultDatabase(WindowsAppPaths.databaseFile(), session).listAlbums() }
@@ -345,13 +364,16 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
             }
             Text("${albumMedia.size} media item(s) in this album")
             if (albumMedia.isEmpty()) Text("This album is empty. Add media from Gallery using Add to album.")
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyVerticalGrid(columns = GridCells.Adaptive(190.dp), modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(albumMedia) { media ->
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(media.originalName, style = MaterialTheme.typography.titleMedium)
-                            Text(media.mimeType)
-                            Text("Size: ${media.fileSize} bytes")
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            albumThumbnails[media.id]?.let { preview ->
+                                Image(bitmap=preview.toComposeImageBitmap(),contentDescription=media.originalName,modifier=Modifier.fillMaxWidth().height(150.dp))
+                            } ?: Box(Modifier.fillMaxWidth().height(150.dp),contentAlignment=Alignment.Center){Text("No preview")}
+                            Text(media.originalName,style=MaterialTheme.typography.titleSmall,maxLines=2)
+                            Text(media.mimeType,style=MaterialTheme.typography.bodySmall)
+                            Text("Size: ${media.fileSize} bytes",style=MaterialTheme.typography.bodySmall)
                             TextButton(onClick = {
                                 try {
                                     VaultDatabase(WindowsAppPaths.databaseFile(), session).removeMediaFromAlbum(media.id, selectedAlbum!!.id)
