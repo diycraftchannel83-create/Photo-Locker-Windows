@@ -92,7 +92,8 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var importedCount by remember { mutableStateOf(0) }
-    val store = remember { WindowsVaultKeyStore(keyFile) }
+    var selectedVaultFolder by remember { mutableStateOf<java.nio.file.Path?>(null) }
+    val store = remember(keyFile) { WindowsVaultKeyStore(keyFile) }
     fun getSession(): UnlockedVaultSession {
         check(System.getProperty("os.name").lowercase().contains("windows")) { "Vault operations require Windows DPAPI." }
         return session ?: UnlockedVaultSession(store).also { setSession(it) }
@@ -107,7 +108,7 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(when(operation) {
-                        "create" -> "Set a password of at least 8 characters. Keep it safe: forgetting it may permanently prevent access to your encrypted media."
+                        "create" -> "Set a password of at least 8 characters. Vault location: ${selectedVaultFolder?.toString() ?: WindowsAppPaths.vaultDirectory().toString()}. Keep the password safe; forgetting it may permanently prevent access to encrypted media."
                         "unlock" -> "Enter your vault password."
                         else -> "This vault was created using Windows DPAPI. Set a password to migrate it. Existing encrypted files will not be changed."
                     })
@@ -148,7 +149,14 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
             Text("Local-first photo and video protection. Media uses AES-256-GCM. Vault password is protected with PBKDF2-HMAC-SHA256 and AES-GCM.")\n            Text("Important: uninstalling the application should not delete your vault. Vault data is stored separately in your Windows user AppData folder. Back up your vault before reinstalling Windows or deleting user data.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.tertiary)
             Text(vaultStatus, style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(enabled=!vaultExists && session?.isUnlocked!=true, onClick={operation="create"}) { Text("Create Vault") }
+                Button(enabled=!vaultExists && session?.isUnlocked!=true, onClick={
+                    val chooser = JFileChooser().apply { dialogTitle = "Choose vault storage folder (another drive is supported)"; fileSelectionMode = JFileChooser.DIRECTORIES_ONLY; isAcceptAllFileFilterUsed = false }
+                    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                        selectedVaultFolder = chooser.selectedFile.toPath()
+                        try { WindowsAppPaths.setVaultDirectory(selectedVaultFolder!!); operation = "create" }
+                        catch (e: Exception) { message = "Could not set vault folder: ${e.message ?: e.javaClass.simpleName}" }
+                    }
+                }) { Text("Create Vault") }
                 OutlinedButton(enabled=vaultExists && session?.isUnlocked!=true && passwordProtected, onClick={operation="unlock"}) { Text("Unlock") }
                 OutlinedButton(enabled=vaultExists && session?.isUnlocked!=true && !passwordProtected, onClick={operation="migrate"}) { Text("Migrate Existing Vault") }
                 OutlinedButton(enabled=session?.isUnlocked==true, onClick={
