@@ -29,12 +29,11 @@ The vault folder includes `vault.key.dpapi`, `vault.db`, encrypted media, and en
 Use JDK 17 and Gradle 8.14. CI runs unit tests and packages Windows MSI/EXE.
 
 ## Roadmap
-1. Secure Gallery with encrypted thumbnail lifecycle.
-2. Photo viewer with controlled temporary plaintext lifecycle.
-3. Video playback with secure temporary file cleanup.
-4. Album membership and media management.
-5. Encrypt metadata database.
-6. Auto-lock after inactivity and password attempt throttling.
-7. Backup/restore with integrity verification and recovery.
-8. Windows runtime, installer/uninstaller, upgrade/uninstall data-preservation tests.
-9. Final security audit before public release.
+1. Validate encrypted thumbnail, viewer, and temporary-file cleanup on Windows.
+2. Video playback with secure temporary file lifecycle.
+3. Protect remaining database structural metadata / evaluate full database encryption.
+4. Validate backup/restore and recovery on Windows.
+5. Password attempt throttling.
+6. Validate auto-lock on pointer and keyboard activity.
+7. Installer, upgrade, uninstall, and data-preservation tests for default and alternate-drive vaults.
+8. Final security audit before public release.
