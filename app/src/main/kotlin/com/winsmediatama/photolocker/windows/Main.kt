@@ -464,7 +464,7 @@ private fun BackupPage(session: UnlockedVaultSession?, setSession: (UnlockedVaul
                     message = try {
                         val secret = restorePassword.toCharArray()
                         try { VaultBackupEngine.restoreBackup(fileChooser.selectedFile.toPath(), target, secret) }
-                        finally { secret.fill('\\u0000') }
+                        finally { secret.fill('\u0000') }
                         restorePassword=""
                         WindowsAppPaths.setVaultDirectory(target)
                         session?.lock()
