@@ -84,47 +84,34 @@ private fun readWindowsThemeInfo(): WindowsThemeInfo {
     return WindowsThemeInfo(dark, accent)
 }
 
+private fun loadThemePreference(): String = try {
+    java.util.prefs.Preferences.userNodeForPackage(PhotoLockerDesktopAppMarker::class.java).get("themeMode", "System")
+} catch (_: Exception) { "System" }
+private object PhotoLockerDesktopAppMarker
+private fun saveThemePreference(value: String) {
+    try { java.util.prefs.Preferences.userNodeForPackage(PhotoLockerDesktopAppMarker::class.java).put("themeMode", value) } catch (_: Exception) { }
+}
 @Composable
-private fun WindowsAdaptiveTheme(content: @Composable () -> Unit) {
+private fun WindowsAdaptiveTheme(themeMode: String, content: @Composable () -> Unit) {
     var info by remember { mutableStateOf(readWindowsThemeInfo()) }
     LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(5000)
-            info = readWindowsThemeInfo()
-        }
+        while (true) { kotlinx.coroutines.delay(5000); info = readWindowsThemeInfo() }
     }
+    val dark = when(themeMode) { "Dark" -> true; "Light" -> false; else -> info.dark }
     val accent = info.accent
-    val scheme = if (info.dark) darkColorScheme(
-        primary = accent,
-        onPrimary = Color.White,
-        secondary = accent,
-        onSecondary = Color.White,
-        tertiary = accent,
-        surface = Color(0xFF202020),
-        background = Color(0xFF111111),
-        surfaceVariant = Color(0xFF2B2B2B),
-        onSurface = Color(0xFFE6E6E6),
-        onSurfaceVariant = Color(0xFFC8C8C8),
-        outline = Color(0xFF6D6D6D)
-    ) else lightColorScheme(
-        primary = accent,
-        onPrimary = Color.White,
-        secondary = accent,
-        onSecondary = Color.White,
-        tertiary = accent,
-        surface = Color(0xFFFDFDFD),
-        background = Color(0xFFF3F3F3),
-        surfaceVariant = Color(0xFFE5E5E5),
-        onSurface = Color(0xFF1A1A1A),
-        onSurfaceVariant = Color(0xFF454545),
-        outline = Color(0xFF777777)
-    )
-    MaterialTheme(colorScheme = scheme, content = content)
+    val scheme = if (dark) darkColorScheme(primary=accent,onPrimary=Color.White,secondary=accent,onSecondary=Color.White,
+        tertiary=accent,surface=Color(0xFF202020),background=Color(0xFF111111),surfaceVariant=Color(0xFF2B2B2B),
+        onSurface=Color(0xFFE6E6E6),onSurfaceVariant=Color(0xFFC8C8C8),outline=Color(0xFF6D6D6D))
+    else lightColorScheme(primary=accent,onPrimary=Color.White,secondary=accent,onSecondary=Color.White,tertiary=accent,
+        surface=Color(0xFFFDFDFD),background=Color(0xFFF3F3F3),surfaceVariant=Color(0xFFE5E5E5),
+        onSurface=Color(0xFF1A1A1A),onSurfaceVariant=Color(0xFF454545),outline=Color(0xFF777777))
+    MaterialTheme(colorScheme=scheme,content=content)
 }
 
 @Composable
 private fun PhotoLockerDesktopApp() {
     var selectedPage by remember { mutableStateOf("Home") }
+    var themeMode by remember { mutableStateOf(loadThemePreference()) }
     var vaultSession by remember { mutableStateOf<UnlockedVaultSession?>(null) }
     val pages = listOf("Home", "Gallery", "Albums", "Backup", "Security", "Settings")
     var lastActivity by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -141,6 +128,7 @@ private fun PhotoLockerDesktopApp() {
             }
         }
     }
+    WindowsAdaptiveTheme(themeMode) {
     Row(Modifier.fillMaxSize().onKeyEvent { lastActivity = System.currentTimeMillis(); false }.pointerInput(Unit) {
         detectTapGestures(onPress = { lastActivity = System.currentTimeMillis() })
     }) {
@@ -166,6 +154,7 @@ private fun PhotoLockerDesktopApp() {
                 else -> PlaceholderPage(selectedPage)
             }
         }
+    }
     }
 }
 
