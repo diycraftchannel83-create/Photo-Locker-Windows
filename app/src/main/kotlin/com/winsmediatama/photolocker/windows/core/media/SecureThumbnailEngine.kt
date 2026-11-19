@@ -60,10 +60,13 @@ class SecureThumbnailEngine(
         val width = maxOf(1, (source.width * ratio).toInt())
         val height = maxOf(1, (source.height * ratio).toInt())
         val target = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
-        target.createGraphics().useGraphics { g ->
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
-            g.drawImage(source, 0, 0, width, height, null)
+        val graphics = target.createGraphics()
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+            graphics.drawImage(source, 0, 0, width, height, null)
+        } finally {
+            graphics.dispose()
         }
         return target
     }
