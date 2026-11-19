@@ -45,6 +45,9 @@ class SecureThumbnailEngine(
     }
 
     fun loadEncryptedThumbnailPreview(encryptedThumbnail: Path): BufferedImage {
+        // cleanupTemporaryFiles() may remove the temp root while the vault is locked.
+        // Recreate it before creating the per-preview plaintext workspace.
+        Files.createDirectories(tempRoot)
         val privateTemp = Files.createTempDirectory(tempRoot, "plw-thumb-view-")
         val plain = privateTemp.resolve("preview.png")
         try {
