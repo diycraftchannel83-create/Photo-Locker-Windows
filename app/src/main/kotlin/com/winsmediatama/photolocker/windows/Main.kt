@@ -439,10 +439,42 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
                             Text(item.originalName, style=MaterialTheme.typography.titleSmall, maxLines=2)
                             Text(item.mimeType, style=MaterialTheme.typography.bodySmall)
                             Text("Size: ${item.fileSize} bytes", style=MaterialTheme.typography.bodySmall)
-                            TextButton(onClick={menuMediaId=item.id}, enabled=albums.isNotEmpty()) { Text("Add to album") }
+                            TextButton(onClick={menuMediaId=item.id}, enabled=albums.isNotEmpty() || item.mimeType.startsWith("image/")) { Text("Options") }
                             DropdownMenu(expanded=menuMediaId==item.id,onDismissRequest={menuMediaId=null}) {
+                                if (item.mimeType.startsWith("image/")) {
+                                    DropdownMenuItem(text={Text("Export photo from vault…")},onClick={
+                                        menuMediaId=null
+                                        val chooser=JFileChooser().apply {
+                                            dialogTitle="Choose destination folder for exported photo"
+                                            fileSelectionMode=JFileChooser.DIRECTORIES_ONLY
+                                            isAcceptAllFileFilterUsed=false
+                                        }
+                                        if (chooser.showOpenDialog(null)==JFileChooser.APPROVE_OPTION) {
+                                            status=try {
+                                                val destinationFolder=chooser.selectedFile.toPath()
+                                                val encrypted=WindowsAppPaths.encryptedMediaDirectory().resolve(item.encryptedRelativePath.substringAfterLast('/'))
+                                                val temp=SecureMediaViewerTemp.open(session!!,encrypted,WindowsAppPaths.temporaryDirectory())
+                                                try {
+                                                    var target=destinationFolder.resolve(item.originalName)
+                                                    if (java.nio.file.Files.exists(target)) {
+                                                        val base=item.originalName.substringBeforeLast('.',item.originalName)
+                                                        val ext=item.originalName.substringAfterLast('.', "")
+                                                        var index=1
+                                                        do {
+                                                            val candidateName=if(ext.isBlank()) "$base (export $index)" else "$base (export $index).$ext"
+                                                            target=destinationFolder.resolve(candidateName)
+                                                            index++
+                                                        } while(java.nio.file.Files.exists(target))
+                                                    }
+                                                    java.nio.file.Files.copy(temp.path,target)
+                                                    "Photo exported to: $target"
+                                                } finally { temp.close() }
+                                            } catch(ex:Exception) { "Photo export failed: ${ex.message ?: ex.javaClass.simpleName}" }
+                                        }
+                                    })
+                                }
                                 albums.forEach { album ->
-                                    DropdownMenuItem(text={Text(album.name)},onClick={
+                                    DropdownMenuItem(text={Text("Add to album: ${album.name}")},onClick={
                                         status=try {
                                             VaultDatabase(WindowsAppPaths.databaseFile(),session).addMediaToAlbum(item.id,album.id)
                                             "Added to album: ${album.name}"
