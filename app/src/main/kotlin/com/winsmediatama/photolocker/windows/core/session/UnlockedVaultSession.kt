@@ -16,14 +16,19 @@ class UnlockedVaultSession(private val keyStore: WindowsVaultKeyStore) {
     val isUnlocked: Boolean
         get() = mutex.withLock { activeKey != null }
 
-    fun initialize() = mutex.withLock {
+    fun initialize(password: CharArray) = mutex.withLock {
         check(activeKey == null) { "Vault is already unlocked." }
-        activeKey = keyStore.createVaultKey()
+        activeKey = keyStore.createVaultKey(password)
     }
 
-    fun unlock() = mutex.withLock {
+    fun unlock(password: CharArray) = mutex.withLock {
         check(activeKey == null) { "Vault is already unlocked." }
-        activeKey = keyStore.unlock()
+        activeKey = keyStore.unlock(password)
+    }
+
+    fun migrateLegacyVault(password: CharArray) = mutex.withLock {
+        check(activeKey == null) { "Vault is already unlocked." }
+        activeKey = keyStore.migrateLegacyToPassword(password)
     }
 
     fun lock() = mutex.withLock {
