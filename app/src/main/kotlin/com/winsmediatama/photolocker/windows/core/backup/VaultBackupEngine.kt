@@ -1,5 +1,7 @@
 package com.winsmediatama.photolocker.windows.core.backup
 
+import com.winsmediatama.photolocker.windows.core.crypto.VaultFileCrypto
+import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -12,7 +14,7 @@ import java.util.zip.ZipOutputStream
 object VaultBackupEngine {
     private const val MANIFEST = "manifest.sha256"
 
-    fun createBackup(vaultDirectory: Path, outputFile: Path) {
+    fun createBackup(vaultDirectory: Path, outputFile: Path, session: UnlockedVaultSession) {
         require(Files.isDirectory(vaultDirectory)) { "Vault folder does not exist." }
         val files = Files.walk(vaultDirectory).use { walk ->
             walk.filter { Files.isRegularFile(it) && !it.startsWith(vaultDirectory.resolve(".temporary")) }.toList()
@@ -22,8 +24,11 @@ object VaultBackupEngine {
             val relative = vaultDirectory.relativize(file).toString().replace('\\', '/')
             "${sha256(file)}  ${Base64.getEncoder().encodeToString(relative.toByteArray(Charsets.UTF_8))}"
         }
-        outputFile.parent?.let(Files::createDirectories)
-        ZipOutputStream(Files.newOutputStream(outputFile)).use { zip ->
+        val tempRoot = vaultDirectory.resolve(".temporary")
+        Files.createDirectories(tempRoot)
+        val zipTemp = Files.createTempFile(tempRoot, "backup-", ".zip")
+        try {
+        ZipOutputStream(Files.newOutputStream(zipTemp)).use { zip ->
             files.forEach { file ->
                 val relative = vaultDirectory.relativize(file).toString().replace('\\', '/')
                 zip.putNextEntry(ZipEntry(relative))
@@ -34,19 +39,25 @@ object VaultBackupEngine {
             zip.write(manifestLines.joinToString("\n", postfix = "\n").toByteArray(Charsets.UTF_8))
             zip.closeEntry()
         }
+        session.withKey { key -> VaultFileCrypto.encryptFile(zipTemp, outputFile, key) }
+        } finally { Files.deleteIfExists(zipTemp) }
     }
 
-    /** Restore only into an empty destination. Verifies manifest before publishing files. */
-    fun restoreBackup(backupFile: Path, destination: Path) {
+    /** Restore only into an empty destination. Decrypts outer backup and verifies manifest before publishing files. */
+    fun restoreBackup(backupFile: Path, destination: Path, session: UnlockedVaultSession) {
         require(Files.isRegularFile(backupFile)) { "Backup file not found." }
         require(!Files.exists(destination) || Files.list(destination).use { it.findAny().isEmpty }) {
             "Restore destination must be absent or an empty directory."
         }
+        val tempRoot = destination.resolve(".temporary")
+        Files.createDirectories(tempRoot)
+        val zipTemp = Files.createTempFile(tempRoot, "restore-", ".zip")
+        session.withKey { key -> VaultFileCrypto.decryptFile(backupFile, zipTemp, key) }
         val staging = destination.resolveSibling(destination.fileName.toString() + ".restore-staging")
         if (Files.exists(staging)) deleteTree(staging)
         Files.createDirectories(staging)
         try {
-            ZipInputStream(Files.newInputStream(backupFile)).use { zip ->
+            ZipInputStream(Files.newInputStream(zipTemp)).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
                     val name = entry.name.replace('\\', '/')
@@ -95,7 +106,7 @@ object VaultBackupEngine {
         } catch (e: Exception) {
             deleteTree(staging)
             throw e
-        }
+        } finally { Files.deleteIfExists(zipTemp) }
     }
 
     private fun sha256(path: Path): String {
