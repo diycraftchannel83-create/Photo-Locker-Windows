@@ -323,7 +323,7 @@ private fun ImageViewerDialog(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(title, color = Color.White, modifier = Modifier.weight(1f), maxLines = 1)
-                    TextButton(onClick = { zoom = 0.65f }) { Text("Fit") }
+                    TextButton(onClick = { zoom = 1f }) { Text("Fit") }
                     TextButton(onClick = { zoom = 1f }) { Text("100%") }
                     TextButton(onClick = { zoom = (zoom * 1.25f).coerceAtMost(4f) }) { Text("+") }
                     TextButton(onClick = { zoom = (zoom / 1.25f).coerceAtLeast(0.2f }) { Text("−") }
