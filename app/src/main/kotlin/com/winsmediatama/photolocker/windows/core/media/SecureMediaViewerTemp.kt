@@ -25,6 +25,7 @@ class SecureMediaViewerTemp private constructor(private val tempFile: Path) : Au
 
     companion object {
         fun open(session: UnlockedVaultSession, encryptedMedia: Path, tempRoot: Path = Path.of(System.getProperty("java.io.tmpdir"))): SecureMediaViewerTemp {
+            Files.createDirectories(tempRoot)
             val directory = Files.createTempDirectory(tempRoot, "plw-view-")
             val plain = directory.resolve("view.tmp")
             try {
