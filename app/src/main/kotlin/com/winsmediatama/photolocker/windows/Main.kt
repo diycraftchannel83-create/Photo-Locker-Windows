@@ -8,10 +8,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession\nimport com.winsmediatama.photolocker.windows.core.database.VaultDatabase\nimport com.winsmediatama.photolocker.windows.core.importer.MediaImportEngine
+import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession
+import com.winsmediatama.photolocker.windows.core.database.VaultDatabase
+import com.winsmediatama.photolocker.windows.core.importer.MediaImportEngine
 import com.winsmediatama.photolocker.windows.platform.dpapi.WindowsVaultKeyStore
 import com.winsmediatama.photolocker.windows.platform.storage.WindowsAppPaths
-import javax.swing.JFileChooser\nimport javax.swing.filechooser.FileNameExtensionFilter
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 
 fun main() = application {
     Window(onCloseRequest = ::exitApplication, title = "Photo-Locker Windows") {
@@ -51,7 +54,8 @@ private fun PhotoLockerDesktopApp() {
 private fun HomePage() {
     var vaultStatus by remember { mutableStateOf("Vault status: Locked / Not initialized") }
     var message by remember { mutableStateOf("") }
-    var session by remember { mutableStateOf<UnlockedVaultSession?>(null) }\n    var importedCount by remember { mutableStateOf(0) }
+    var session by remember { mutableStateOf<UnlockedVaultSession?>(null) }
+    var importedCount by remember { mutableStateOf(0) }
     fun getSession(): UnlockedVaultSession {
         check(System.getProperty("os.name").lowercase().contains("windows")) {
             "Vault initialization and unlock require Windows DPAPI."
