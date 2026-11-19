@@ -12,12 +12,11 @@
 - Windows MSI/EXE packaging workflow and CI tests.
 
 ## Vault data location and uninstall behavior
-Vault data is stored separately from the installation directory:
-`%LOCALAPPDATA%\\Photo-Locker-Windows\\vault\\`
-This includes `vault.key.dpapi`, `vault.db`, and `media\\`. Uninstalling the application is intended to leave vault data in place. Do not manually delete this folder, and make a backup before reinstalling Windows or cleaning AppData. This behavior must be verified against the final installer/uninstaller on Windows.
+Vault data defaults to `%LOCALAPPDATA%\\Photo-Locker-Windows\\vault\\`, or a user-selected folder/drive chosen when creating a vault. The custom location pointer is stored under AppData.
+The vault folder includes `vault.key.dpapi`, `vault.db`, encrypted media, and encrypted thumbnails. Uninstalling the application is intended to leave vault data in place. Do not manually delete this folder, and make a backup before reinstalling Windows or cleaning AppData. This behavior must be verified against the final installer/uninstaller on Windows.
 
 ## Security status
-**Alpha — not production ready.** Secure thumbnails are stored encrypted; photo viewing uses temporary plaintext files that are deleted best-effort. Media filenames, MIME types, encrypted-relative paths, and album names are encrypted in SQLite. IDs, file sizes, import timestamps, relations, and schema structure remain visible. Existing plaintext metadata is migrated on vault initialization. Video playback, backup/restore, attempt throttling, crash-safe cleanup, keyboard/pointer auto-lock runtime validation, custom-drive uninstall/upgrade preservation tests, and full Windows security validation remain unfinished. JVM memory zeroization and temporary-file cleanup cannot be guaranteed. Lock on app exit is implemented, but JVM memory zeroization is best-effort only.
+**Alpha — not production ready.** Secure thumbnails are stored encrypted; photo viewing uses temporary plaintext files that are deleted best-effort and closed when the vault locks. Metadata fields and album names are encrypted in SQLite; IDs, file sizes, import timestamps, relations, and schema structure remain visible. Existing plaintext metadata is migrated on vault initialization. Backup/restore with SHA-256 manifest has been implemented but needs Windows runtime validation. Video playback, attempt throttling, crash-safe cleanup, keyboard/pointer auto-lock runtime validation, custom-drive uninstall/upgrade preservation tests, and full Windows security validation remain unfinished. JVM memory zeroization and temporary-file cleanup cannot be guaranteed. Lock on app exit is implemented, but JVM memory zeroization is best-effort only.
 
 ## Technology
 - Kotlin + Compose Desktop
