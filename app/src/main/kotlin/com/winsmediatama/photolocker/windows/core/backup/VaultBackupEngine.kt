@@ -38,7 +38,7 @@ object VaultBackupEngine {
             zip.closeEntry()
         }
         PasswordBackupCrypto.encrypt(zipTemp, outputFile, password, tempRoot)
-        } finally { Files.deleteIfExists(zipTemp) }
+        } finally { Files.deleteIfExists(zipTemp); try { Files.deleteIfExists(tempRoot) } catch (_: Exception) { } }
     }
 
     /** Restore only into an empty destination. Decrypts outer backup and verifies manifest before publishing files. */
@@ -50,11 +50,11 @@ object VaultBackupEngine {
         val tempRoot = destination.resolve(".temporary")
         Files.createDirectories(tempRoot)
         val zipTemp = Files.createTempFile(tempRoot, "restore-", ".zip")
-        PasswordBackupCrypto.decrypt(backupFile, zipTemp, password, tempRoot)
         val staging = destination.resolveSibling(destination.fileName.toString() + ".restore-staging")
-        if (Files.exists(staging)) deleteTree(staging)
-        Files.createDirectories(staging)
         try {
+            PasswordBackupCrypto.decrypt(backupFile, zipTemp, password, tempRoot)
+            if (Files.exists(staging)) deleteTree(staging)
+            Files.createDirectories(staging)
             ZipInputStream(Files.newInputStream(zipTemp)).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
