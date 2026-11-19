@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.material3.*
 import androidx.compose.ui.graphics.Color
@@ -344,7 +346,8 @@ private fun ImageViewerDialog(
                     Image(
                         bitmap = image.toComposeImageBitmap(),
                         contentDescription = title,
-                        modifier = Modifier.fillMaxSize().then(if (zoom == 0.65f) Modifier else Modifier)
+                        modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = zoom, scaleY = zoom),
+                        contentScale = ContentScale.Fit
                     )
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -483,6 +486,9 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
     var renameValue by remember { mutableStateOf("") }
     var albumMedia by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.MediaRecord>()) }
     var albumThumbnails by remember { mutableStateOf<Map<String, java.awt.image.BufferedImage>>(emptyMap()) }
+    var albumViewerImage by remember { mutableStateOf<java.awt.image.BufferedImage?>(null) }
+    var albumViewerTitle by remember { mutableStateOf("") }
+    var albumViewerError by remember { mutableStateOf("") }
     LaunchedEffect(session, selectedAlbum, albumMedia) {
         albumThumbnails = emptyMap()
         if (session?.isUnlocked == true && selectedAlbum != null) {
@@ -532,7 +538,16 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             albumThumbnails[media.id]?.let { preview ->
-                                Image(bitmap=preview.toComposeImageBitmap(),contentDescription=media.originalName,modifier=Modifier.fillMaxWidth().height(150.dp))
+                                Image(bitmap=preview.toComposeImageBitmap(),contentDescription=media.originalName,modifier=Modifier.fillMaxWidth().height(150.dp).clickable {
+                                    albumViewerError = ""
+                                    albumViewerTitle = media.originalName
+                                    albumViewerImage = try {
+                                        val encrypted = WindowsAppPaths.encryptedMediaDirectory().resolve(media.encryptedRelativePath.substringAfterLast('/'))
+                                        val temp = SecureMediaViewerTemp.open(session, encrypted, WindowsAppPaths.temporaryDirectory())
+                                        try { ImageIO.read(temp.path.toFile()) ?: throw IllegalArgumentException("Unsupported image format.") }
+                                        finally { temp.close() }
+                                    } catch(ex:Exception){ albumViewerError=ex.message ?: "Unable to open photo."; null }
+                                })
                             } ?: Box(Modifier.fillMaxWidth().height(150.dp),contentAlignment=Alignment.Center){Text("No preview")}
                             Text(media.originalName,style=MaterialTheme.typography.titleSmall,maxLines=2)
                             Text(media.mimeType,style=MaterialTheme.typography.bodySmall)
@@ -587,6 +602,11 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
             }
         }
     }
+    if (albumViewerImage != null) {
+        ImageViewerDialog(title=albumViewerTitle,image=albumViewerImage!!,onClose={albumViewerImage=null},
+            fileName=albumViewerTitle,fileSize=albumMedia.firstOrNull{it.originalName==albumViewerTitle}?.fileSize)
+    }
+    if (albumViewerError.isNotBlank()) AlertDialog(onDismissRequest={albumViewerError=""},title={Text("Photo viewer")},text={Text(albumViewerError)},confirmButton={TextButton(onClick={albumViewerError=""}){Text("OK")}})
     if (renameAlbumId != null) {
         AlertDialog(
             onDismissRequest = { renameAlbumId = null },
