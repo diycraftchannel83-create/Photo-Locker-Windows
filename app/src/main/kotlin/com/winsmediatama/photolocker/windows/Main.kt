@@ -3,6 +3,12 @@ package com.winsmediatama.photolocker.windows
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.material3.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.awt.SwingPanel
@@ -207,13 +213,12 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
     var error by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var menuMediaId by remember { mutableStateOf<String?>(null) }
-    var viewerTemp by remember { mutableStateOf<SecureMediaViewerTemp?>(null) }
+    var viewerImage by remember { mutableStateOf<java.awt.image.BufferedImage?>(null) }
     var viewerError by remember { mutableStateOf("") }
     var viewerTitle by remember { mutableStateOf("") }
     var thumbnailImages by remember { mutableStateOf<Map<String, java.awt.image.BufferedImage>>(emptyMap()) }
     var thumbnailMessage by remember { mutableStateOf("") }
-    DisposableEffect(viewerTemp) { onDispose { viewerTemp?.close() } }
-    LaunchedEffect(session) { if (session?.isUnlocked != true) { viewerTemp?.close(); viewerTemp = null } }
+    LaunchedEffect(session) { if (session?.isUnlocked != true) { viewerImage = null } }
     LaunchedEffect(session) {
         records = emptyList(); albums = emptyList(); error = ""; status = ""
         if (session?.isUnlocked == true) {
@@ -273,9 +278,15 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
                                     TextButton(onClick = {
                                         viewerError = ""
                                         viewerTitle = item.originalName
-                                        viewerTemp = try {
+                                        viewerImage = try {
                                             val encrypted = WindowsAppPaths.encryptedMediaDirectory().resolve(item.encryptedRelativePath.substringAfterLast('/'))
-                                            SecureMediaViewerTemp.open(session, encrypted, WindowsAppPaths.temporaryDirectory())
+                                            val temp = SecureMediaViewerTemp.open(session, encrypted, WindowsAppPaths.temporaryDirectory())
+                                            try {
+                                                ImageIO.read(temp.path.toFile())
+                                                    ?: throw IllegalArgumentException("Image format is not supported by the viewer.")
+                                            } finally {
+                                                temp.close()
+                                            }
                                         } catch (ex: Exception) {
                                             viewerError = ex.message ?: "Unable to open photo."
                                             null
@@ -309,16 +320,17 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
             if (albums.isEmpty()) Text("Create an album first in the Albums page to organize media.")
         }
     }
-    if (viewerTemp != null) {
-        Dialog(onDismissRequest = { viewerTemp?.close(); viewerTemp = null }) {
+    if (viewerImage != null) {
+        Dialog(onDismissRequest = { viewerImage = null }) {
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(viewerTitle, style = MaterialTheme.typography.titleMedium)
-                    SwingPanel(
-                        modifier = Modifier.fillMaxWidth().height(520.dp),
-                        factory = { JLabel(ImageIcon(ImageIO.read(viewerTemp!!.path.toFile()))).apply { horizontalAlignment = JLabel.CENTER } }
+                    Image(
+                        bitmap = viewerImage!!.toComposeImageBitmap(),
+                        contentDescription = viewerTitle,
+                        modifier = Modifier.fillMaxWidth().height(520.dp)
                     )
-                    Button(onClick = { viewerTemp?.close(); viewerTemp = null }, modifier = Modifier.align(Alignment.End)) { Text("Close photo") }
+                    Button(onClick = { viewerImage = null }, modifier = Modifier.align(Alignment.End)) { Text("Close photo") }
                 }
             }
         }
