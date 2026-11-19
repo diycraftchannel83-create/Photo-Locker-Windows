@@ -48,12 +48,12 @@ private fun HomePage() {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Your private media vault", style = MaterialTheme.typography.titleLarge)
             Text("Keep photos and videos protected locally on this PC.")
-            Text("Security foundation is under development. This initial desktop shell does not yet store or encrypt media.", color = MaterialTheme.colorScheme.error)
+            Text("Security core exists, but media import, vault integration, and unlock flow are not yet implemented in the UI.", color = MaterialTheme.colorScheme.error)
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        FeatureCard("Encrypted Vault", "AES-256-GCM planned")
-        FeatureCard("Windows Key Protection", "DPAPI integration planned")
+        FeatureCard("Encrypted Vault", "AES-256-GCM core implemented")
+        FeatureCard("Windows Key Protection", "DPAPI key protection implemented")
         FeatureCard("Portable Backup", "Android .plb compatibility planned")
     }
 }
