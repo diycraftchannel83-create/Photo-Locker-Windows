@@ -48,6 +48,7 @@ private fun PhotoLockerDesktopApp() {
     var lastActivity by remember { mutableStateOf(System.currentTimeMillis()) }
     DisposableEffect(vaultSession) { onDispose { vaultSession?.lock() } }
     LaunchedEffect(vaultSession) {
+        if (vaultSession?.isUnlocked == true) lastActivity = System.currentTimeMillis()
         while (vaultSession?.isUnlocked == true) {
             kotlinx.coroutines.delay(1000)
             if (System.currentTimeMillis() - lastActivity >= 5 * 60 * 1000L) {
