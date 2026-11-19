@@ -211,6 +211,7 @@ private fun GalleryPage(session: UnlockedVaultSession?) {
     var thumbnailImages by remember { mutableStateOf<Map<String, java.awt.image.BufferedImage>>(emptyMap()) }
     var thumbnailMessage by remember { mutableStateOf("") }
     DisposableEffect(viewerTemp) { onDispose { viewerTemp?.close() } }
+    LaunchedEffect(session) { if (session?.isUnlocked != true) { viewerTemp?.close(); viewerTemp = null } }
     LaunchedEffect(session) {
         records = emptyList(); albums = emptyList(); error = ""; status = ""
         if (session?.isUnlocked == true) {
