@@ -8,10 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession
+import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession\nimport com.winsmediatama.photolocker.windows.core.database.VaultDatabase\nimport com.winsmediatama.photolocker.windows.core.importer.MediaImportEngine
 import com.winsmediatama.photolocker.windows.platform.dpapi.WindowsVaultKeyStore
 import com.winsmediatama.photolocker.windows.platform.storage.WindowsAppPaths
-import java.awt.GraphicsEnvironment
+import javax.swing.JFileChooser\nimport javax.swing.filechooser.FileNameExtensionFilter
 
 fun main() = application {
     Window(onCloseRequest = ::exitApplication, title = "Photo-Locker Windows") {
@@ -51,7 +51,7 @@ private fun PhotoLockerDesktopApp() {
 private fun HomePage() {
     var vaultStatus by remember { mutableStateOf("Vault status: Locked / Not initialized") }
     var message by remember { mutableStateOf("") }
-    var session by remember { mutableStateOf<UnlockedVaultSession?>(null) }
+    var session by remember { mutableStateOf<UnlockedVaultSession?>(null) }\n    var importedCount by remember { mutableStateOf(0) }
     fun getSession(): UnlockedVaultSession {
         check(System.getProperty("os.name").lowercase().contains("windows")) {
             "Vault initialization and unlock require Windows DPAPI."
@@ -90,6 +90,29 @@ private fun HomePage() {
                     message = "Vault locked. In-memory key was cleared (best effort)."
                 }) { Text("Lock") }
             }
+            if (vaultStatus.contains("Unlocked")) {
+                OutlinedButton(onClick = {
+                    message = try {
+                        val chooser = JFileChooser().apply {
+                            isMultiSelectionEnabled = true
+                            dialogTitle = "Import photos and videos into encrypted vault"
+                            fileFilter = FileNameExtensionFilter("Media files", "jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "mp4", "mov", "mkv", "avi")
+                        }
+                        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                            val db = VaultDatabase(WindowsAppPaths.databaseFile(), getSession())
+                            db.initialize()
+                            val engine = MediaImportEngine(getSession(), db, WindowsAppPaths.encryptedMediaDirectory())
+                            val results = chooser.selectedFiles.map { engine.importFile(it.toPath()) }
+                            importedCount = db.countMedia()
+                            "Encrypted import completed: ${results.size} file(s)."
+                        } else "Import cancelled."
+                    } catch (e: Exception) {
+                        "Import failed: ${e.message ?: e.javaClass.simpleName}"
+                    }
+                }) { Text("Import Photos / Videos") }
+                Text("Encrypted media count: $importedCount")
+                Text("Metadata warning: filenames and media metadata currently reside in an unencrypted SQLite database.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
             if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.primary)
         }
     }
@@ -109,7 +132,7 @@ private fun SecurityPage() {
         Text("• Windows DPAPI protected key file")
         Text("• Key held in memory only while unlocked (best-effort JVM zeroization)")
         Text("• UI vault initialization, unlock, and lock controls integrated")
-        Text("PIN/password authentication, database integration, encrypted media import, and secure cache lifecycle are not yet implemented.")
+        Text("PIN/password authentication and secure thumbnail/cache lifecycle are not yet implemented. SQLite metadata is currently stored unencrypted; encrypted media import is implemented.")
     }
 }
 
