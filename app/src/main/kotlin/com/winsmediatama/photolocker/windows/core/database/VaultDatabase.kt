@@ -20,6 +20,12 @@ class VaultDatabase(
 
     private fun connection(): Connection {
         Files.createDirectories(databasePath.parent)
+        // Load the SQLite JDBC driver explicitly for packaged Windows runtimes.
+        try {
+            Class.forName("org.sqlite.JDBC")
+        } catch (e: ClassNotFoundException) {
+            throw IllegalStateException("SQLite JDBC driver is missing from the packaged application.", e)
+        }
         return DriverManager.getConnection("jdbc:sqlite:${databasePath.toAbsolutePath()}").also { conn ->
             conn.createStatement().use { st ->
                 st.execute("PRAGMA foreign_keys=ON")
