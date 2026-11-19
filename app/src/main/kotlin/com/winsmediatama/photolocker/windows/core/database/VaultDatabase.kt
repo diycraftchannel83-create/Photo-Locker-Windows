@@ -9,8 +9,8 @@ import java.sql.DriverManager
 import java.util.UUID
 
 /**
- * SQLite metadata store. Database metadata itself is currently NOT encrypted.
- * All public operations require an unlocked vault session.
+ * SQLite store with encrypted private metadata fields. IDs, sizes, timestamps,
+ * relation structure and database schema remain visible. All operations require unlock.
  */
 class VaultDatabase(
     private val databasePath: Path,
@@ -119,8 +119,8 @@ class VaultDatabase(
     ) = guarded {
         connection().use { conn ->
             conn.prepareStatement("""
-                INSERT INTO media(id, original_name, mime_type, file_size, imported_at, encrypted_relative_path)
-                VALUES(?,?,?,?,?,?)
+                INSERT INTO media(id, original_name, mime_type, file_size, imported_at, encrypted_relative_path, metadata_encrypted)
+                VALUES(?,?,?,?,?,?,?)
             """.trimIndent()).use { ps ->
                 ps.setString(1, id)
                 session.withKey { key ->
