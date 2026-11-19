@@ -8,7 +8,7 @@
 - Password setup, unlock, lock, and migration from legacy Windows DPAPI key blob.
 - Encrypted media import to UUID destinations; original source files remain unchanged.
 - SQLite metadata database for media and albums (metadata is currently plaintext and is a security limitation).
-- Home, Gallery metadata list, Albums, Security, Backup placeholder, Settings placeholder.
+- Home, Gallery metadata list with album assignment controls, Albums with contents view, Security, Backup placeholder, Settings placeholder.
 - Windows MSI/EXE packaging workflow and CI tests.
 
 ## Vault data location and uninstall behavior
@@ -17,7 +17,7 @@ Vault data is stored separately from the installation directory:
 This includes `vault.key.dpapi`, `vault.db`, and `media\\`. Uninstalling the application is intended to leave vault data in place. Do not manually delete this folder, and make a backup before reinstalling Windows or cleaning AppData. This behavior must be verified against the final installer/uninstaller on Windows.
 
 ## Security status
-**Alpha — not production ready.** Metadata SQLite is not encrypted. Secure thumbnails, photo preview, video playback, backup/restore, inactivity auto-lock, attempt throttling, crash-safe cleanup, and full Windows runtime/security validation remain unfinished. Lock on app exit is implemented, but JVM memory zeroization is best-effort only.
+**Alpha — not production ready.** Metadata SQLite is not encrypted. Secure thumbnails, photo preview, video playback, backup/restore, attempt throttling, crash-safe cleanup, encrypted metadata, and full Windows runtime/security validation remain unfinished. Five-minute pointer-idle auto-lock has been implemented; keyboard-only idle activity and Windows runtime behavior still need validation. Lock on app exit is implemented, but JVM memory zeroization is best-effort only.
 
 ## Technology
 - Kotlin + Compose Desktop
