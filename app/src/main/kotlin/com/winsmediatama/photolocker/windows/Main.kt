@@ -8,6 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession
+import com.winsmediatama.photolocker.windows.platform.dpapi.WindowsVaultKeyStore
+import com.winsmediatama.photolocker.windows.platform.storage.WindowsAppPaths
+import java.awt.GraphicsEnvironment
 
 fun main() = application {
     Window(onCloseRequest = ::exitApplication, title = "Photo-Locker Windows") {
@@ -36,6 +40,7 @@ private fun PhotoLockerDesktopApp() {
             Text(selectedPage, style = MaterialTheme.typography.headlineMedium)
             when (selectedPage) {
                 "Home" -> HomePage()
+                "Security" -> SecurityPage()
                 else -> PlaceholderPage(selectedPage)
             }
         }
@@ -44,17 +49,67 @@ private fun PhotoLockerDesktopApp() {
 
 @Composable
 private fun HomePage() {
+    var vaultStatus by remember { mutableStateOf("Vault status: Locked / Not initialized") }
+    var message by remember { mutableStateOf("") }
+    var session by remember { mutableStateOf<UnlockedVaultSession?>(null) }
+    fun getSession(): UnlockedVaultSession {
+        check(System.getProperty("os.name").lowercase().contains("windows")) {
+            "Vault initialization and unlock require Windows DPAPI."
+        }
+        val store = WindowsVaultKeyStore(WindowsAppPaths.keyFile())
+        return session ?: UnlockedVaultSession(store).also { session = it }
+    }
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Your private media vault", style = MaterialTheme.typography.titleLarge)
-            Text("Keep photos and videos protected locally on this PC.")
-            Text("Security core exists, but media import, vault integration, and unlock flow are not yet implemented in the UI.", color = MaterialTheme.colorScheme.error)
+            Text("Local-first photo and video protection. Encryption core uses AES-256-GCM and Windows user-bound DPAPI key protection.")
+            Text(vaultStatus, style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(onClick = {
+                    message = try {
+                        WindowsAppPaths.ensureVaultDirectories()
+                        getSession().initialize()
+                        vaultStatus = "Vault status: Unlocked (new vault)"
+                        "Vault initialized. Key created and protected by Windows DPAPI."
+                    } catch (e: Exception) {
+                        "Initialization failed: ${e.message ?: e.javaClass.simpleName}"
+                    }
+                }) { Text("Create Vault") }
+                OutlinedButton(onClick = {
+                    message = try {
+                        getSession().unlock()
+                        vaultStatus = "Vault status: Unlocked"
+                        "Vault unlocked successfully."
+                    } catch (e: Exception) {
+                        "Unlock failed: ${e.message ?: e.javaClass.simpleName}"
+                    }
+                }) { Text("Unlock") }
+                OutlinedButton(onClick = {
+                    session?.lock()
+                    vaultStatus = "Vault status: Locked"
+                    message = "Vault locked. In-memory key was cleared (best effort)."
+                }) { Text("Lock") }
+            }
+            if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.primary)
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        FeatureCard("Encrypted Vault", "AES-256-GCM core implemented")
-        FeatureCard("Windows Key Protection", "DPAPI key protection implemented")
+        FeatureCard("Encrypted Vault", "AES-256-GCM encryption")
+        FeatureCard("Windows Key Protection", "DPAPI current-user protection")
         FeatureCard("Portable Backup", "Android .plb compatibility planned")
+    }
+}
+
+@Composable
+private fun SecurityPage() {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Security architecture", style = MaterialTheme.typography.titleLarge)
+        Text("• AES-256-GCM authenticated file encryption")
+        Text("• 256-bit vault key")
+        Text("• Windows DPAPI protected key file")
+        Text("• Key held in memory only while unlocked (best-effort JVM zeroization)")
+        Text("• UI vault initialization, unlock, and lock controls integrated")
+        Text("PIN/password authentication, database integration, encrypted media import, and secure cache lifecycle are not yet implemented.")
     }
 }
 
