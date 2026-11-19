@@ -488,7 +488,7 @@ private fun SecurityPage() {
         Text("• Windows DPAPI protected key file")
         Text("• Key held in memory only while unlocked (best-effort JVM zeroization)")
         Text("• UI vault initialization, unlock, and lock controls integrated")
-        Text("Password protection now uses PBKDF2-HMAC-SHA256 with a random salt and AES-GCM wrapping for the vault key. Legacy DPAPI vaults can be migrated without re-encrypting media. SQLite metadata is still unencrypted, and secure thumbnail/cache lifecycle is not implemented.")
+        Text("Vault password wrapping uses PBKDF2-HMAC-SHA256 with random salt and AES-GCM. Media filenames, MIME types, relative paths, and album names are AES-GCM encrypted in SQLite; structural metadata such as UUIDs, sizes, timestamps, and relations remains visible. Encrypted thumbnails and temporary photo viewer cleanup are implemented best-effort. Portable backups are separately password-encrypted and include SHA-256 integrity checks. Full Windows runtime, temporary-file, installer/uninstaller, and recovery validation remain pending.")
     }
 }
 
