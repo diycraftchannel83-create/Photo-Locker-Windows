@@ -1,0 +1,44 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14"
+      - name: Run tests
+        run: gradle --no-daemon test
+      - name: Package MSI and EXE
+        run: gradle --no-daemon packageDistributionForCurrentOS
+      - name: Find release installers
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path "app/build/compose/binaries/main" -Recurse -Include *.msi,*.exe
+          if (-not $files -or $files.Count -eq 0) {
+            throw "No MSI or EXE installers found."
+          }
+          New-Item -ItemType Directory -Force -Path "release-assets" | Out-Null
+          $files | Copy-Item -Destination "release-assets"
+          Get-ChildItem "release-assets"
+      - name: Create GitHub Release and upload installers
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
