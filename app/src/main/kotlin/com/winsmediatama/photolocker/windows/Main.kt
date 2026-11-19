@@ -19,7 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.awaitPointerEventScope
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -58,12 +58,7 @@ private fun PhotoLockerDesktopApp() {
         }
     }
     Row(Modifier.fillMaxSize().onKeyEvent { lastActivity = System.currentTimeMillis(); false }.pointerInput(Unit) {
-        awaitPointerEventScope {
-            while (true) {
-                awaitPointerEvent()
-                lastActivity = System.currentTimeMillis()
-            }
-        }
+        detectTapGestures(onPress = { lastActivity = System.currentTimeMillis() })
     }) {
         Column(Modifier.width(220.dp).fillMaxHeight().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("PHOTO-LOCKER", style = MaterialTheme.typography.titleLarge)
@@ -152,7 +147,8 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Your private media vault", style = MaterialTheme.typography.titleLarge)
-            Text("Local-first photo and video protection. Media uses AES-256-GCM. Vault password is protected with PBKDF2-HMAC-SHA256 and AES-GCM.")\n            Text("Important: uninstalling the application should not delete your vault. Vault data is stored separately in your Windows user AppData folder. Back up your vault before reinstalling Windows or deleting user data.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.tertiary)
+            Text("Local-first photo and video protection. Media uses AES-256-GCM. Vault password is protected with PBKDF2-HMAC-SHA256 and AES-GCM.")
+            Text("Important: uninstalling the application should not delete your vault. Vault data is stored separately in your Windows user AppData folder. Back up your vault before reinstalling Windows or deleting user data.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.tertiary)
             Text(vaultStatus, style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(enabled=!vaultExists && session?.isUnlocked!=true, onClick={
