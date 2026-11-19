@@ -144,6 +144,37 @@ class VaultDatabase(
         }
     }
 
+    fun renameAlbum(albumId: String, newName: String) = guarded {
+        val clean = newName.trim().take(128)
+        require(clean.isNotBlank()) { "Album name cannot be empty." }
+        connection().use { conn ->
+            conn.prepareStatement("UPDATE albums SET name=? WHERE id=?").use { ps ->
+                ps.setString(1, clean)
+                ps.setString(2, albumId)
+                require(ps.executeUpdate() == 1) { "Album not found." }
+            }
+        }
+    }
+
+    fun removeMediaFromAlbum(mediaId: String, albumId: String) = guarded {
+        connection().use { conn ->
+            conn.prepareStatement("DELETE FROM media_album WHERE media_id=? AND album_id=?").use { ps ->
+                ps.setString(1, mediaId)
+                ps.setString(2, albumId)
+                ps.executeUpdate()
+            }
+        }
+    }
+
+    fun deleteAlbum(albumId: String) = guarded {
+        connection().use { conn ->
+            conn.prepareStatement("DELETE FROM albums WHERE id=?").use { ps ->
+                ps.setString(1, albumId)
+                require(ps.executeUpdate() == 1) { "Album not found." }
+            }
+        }
+    }
+
     fun listMediaForAlbum(albumId: String): List<MediaRecord> = guarded {
         connection().use { conn ->
             conn.prepareStatement("""
