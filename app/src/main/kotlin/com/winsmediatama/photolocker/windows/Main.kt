@@ -1,6 +1,8 @@
 package com.winsmediatama.photolocker.windows
 
-import androidx.compose.foundation.layout.*\nimport androidx.compose.foundation.lazy.LazyColumn\nimport androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,7 +28,8 @@ fun main() = application {
 
 @Composable
 private fun PhotoLockerDesktopApp() {
-    var selectedPage by remember { mutableStateOf("Home") }\n    var vaultSession by remember { mutableStateOf<UnlockedVaultSession?>(null) }
+    var selectedPage by remember { mutableStateOf("Home") }
+    var vaultSession by remember { mutableStateOf<UnlockedVaultSession?>(null) }
     val pages = listOf("Home", "Gallery", "Albums", "Backup", "Security", "Settings")
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(220.dp).fillMaxHeight().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -42,7 +45,9 @@ private fun PhotoLockerDesktopApp() {
         Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(selectedPage, style = MaterialTheme.typography.headlineMedium)
             when (selectedPage) {
-                "Home" -> HomePage(vaultSession, { vaultSession = it })\n                "Gallery" -> GalleryPage(vaultSession)\n                "Albums" -> AlbumsPage(vaultSession)
+                "Home" -> HomePage(vaultSession, { vaultSession = it })
+                "Gallery" -> GalleryPage(vaultSession)
+                "Albums" -> AlbumsPage(vaultSession)
                 "Security" -> SecurityPage()
                 else -> PlaceholderPage(selectedPage)
             }
