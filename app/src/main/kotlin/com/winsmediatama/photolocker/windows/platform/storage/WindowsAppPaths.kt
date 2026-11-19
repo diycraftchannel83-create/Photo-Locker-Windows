@@ -44,6 +44,15 @@ object WindowsAppPaths {
     fun encryptedMediaDirectory(): Path = vaultDirectory().resolve("media")
     fun thumbnailDirectory(): Path = vaultDirectory().resolve("thumbnails")
     fun databaseFile(): Path = vaultDirectory().resolve("vault.db")
+    fun temporaryDirectory(): Path = vaultDirectory().resolve(".temporary")
+
+    /** Remove stale plaintext work files left behind by an abnormal previous exit. */
+    fun cleanupTemporaryFiles() {
+        val temp = temporaryDirectory()
+        if (Files.exists(temp)) Files.walk(temp).use { walk ->
+            walk.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+        }
+    }
 
     fun ensureVaultDirectories() {
         Files.createDirectories(encryptedMediaDirectory())
