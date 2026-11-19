@@ -18,7 +18,7 @@ Security modules are committed but **not yet integrated into the UI or a complet
 - Gradle Kotlin DSL
 - JNA for native Windows DPAPI
 - AES/GCM/NoPadding
-- SQLite planned
+- SQLite JDBC metadata database (media/albums schema and import records)
 
 ## Build
 Use JDK 17 and Gradle 8.14. CI runs tests and packages Windows MSI/EXE.
