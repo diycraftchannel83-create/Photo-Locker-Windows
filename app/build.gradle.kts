@@ -24,6 +24,9 @@ compose.desktop {
             packageVersion = "0.1.0"
             description = "Private encrypted photo and video vault"
             vendor = "Wins Mediatama"
+            windows {
+                iconFile.set(project.file("src/main/resources/photo-locker.ico"))
+            }
         }
     }
 }
