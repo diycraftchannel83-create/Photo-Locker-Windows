@@ -11,6 +11,7 @@ import javax.swing.ImageIcon
 import javax.imageio.ImageIO
 import com.winsmediatama.photolocker.windows.core.media.SecureMediaViewerTemp
 import com.winsmediatama.photolocker.windows.core.media.SecureThumbnailEngine
+import com.winsmediatama.photolocker.windows.core.backup.VaultBackupEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.*
@@ -80,6 +81,7 @@ private fun PhotoLockerDesktopApp() {
                 "Home" -> HomePage(vaultSession, { vaultSession = it })
                 "Gallery" -> GalleryPage(vaultSession)
                 "Albums" -> AlbumsPage(vaultSession)
+                "Backup" -> BackupPage(vaultSession)
                 "Security" -> SecurityPage()
                 else -> PlaceholderPage(selectedPage)
             }
@@ -428,6 +430,40 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
         )
     }
 
+}
+
+@Composable
+private fun BackupPage(session: UnlockedVaultSession?) {
+    var message by remember { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("Encrypted vault backup", style = MaterialTheme.typography.titleLarge)
+        Text("Backup contains encrypted media, encrypted metadata fields, the password-protected vault-key blob, and an integrity manifest. It is not a plaintext export.")
+        Button(enabled = session?.isUnlocked == true, onClick = {
+            val chooser = JFileChooser().apply { dialogTitle = "Save Photo-Locker backup"; selectedFile = java.io.File("Photo-Locker-Backup.plwbackup") }
+            if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+                message = try {
+                    VaultBackupEngine.createBackup(WindowsAppPaths.vaultDirectory(), chooser.selectedFile.toPath())
+                    "Backup created with SHA-256 manifest."
+                } catch (e: Exception) { "Backup failed: ${e.message ?: e.javaClass.simpleName}" }
+            }
+        }) { Text("Create Backup") }
+        OutlinedButton(onClick = {
+            val fileChooser = JFileChooser().apply { dialogTitle = "Select Photo-Locker backup"; fileFilter = javax.swing.filechooser.FileNameExtensionFilter("Photo-Locker Backup", "plwbackup") }
+            if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                val folderChooser = JFileChooser().apply { dialogTitle = "Choose empty restore destination folder"; fileSelectionMode = JFileChooser.DIRECTORIES_ONLY }
+                if (folderChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    val target = folderChooser.selectedFile.toPath()
+                    message = try {
+                        VaultBackupEngine.restoreBackup(fileChooser.selectedFile.toPath(), target)
+                        WindowsAppPaths.setVaultDirectory(target)
+                        "Restore complete and integrity checks passed. Restart the app or unlock the restored vault."
+                    } catch (e: Exception) { "Restore failed: ${e.message ?: e.javaClass.simpleName}" }
+                }
+            }
+        }) { Text("Restore Backup") }
+        Text("Restore requires an empty destination folder. Keep the backup file in a separate drive or location.", style = MaterialTheme.typography.bodySmall)
+        if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.primary)
+    }
 }
 
 @Composable
