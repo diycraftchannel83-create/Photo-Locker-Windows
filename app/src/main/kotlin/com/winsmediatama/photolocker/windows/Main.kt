@@ -348,8 +348,16 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
                     try {
                         val encryptedSource = WindowsAppPaths.encryptedMediaDirectory().resolve(media.encryptedRelativePath.substringAfterLast('/'))
                         val thumbFile = WindowsAppPaths.thumbnailDirectory().resolve("${media.id}.plwthumb")
-                        if (!java.nio.file.Files.exists(thumbFile)) engine.createEncryptedThumbnail(encryptedSource, media.id)
-                        result[media.id] = engine.loadEncryptedThumbnailPreview(thumbFile)
+                        var preview: java.awt.image.BufferedImage? = null
+                        if (java.nio.file.Files.exists(thumbFile)) {
+                            try { preview = engine.loadEncryptedThumbnailPreview(thumbFile) }
+                            catch (_: Exception) { java.nio.file.Files.deleteIfExists(thumbFile) }
+                        }
+                        if (preview == null) {
+                            engine.createEncryptedThumbnail(encryptedSource, media.id)
+                            preview = engine.loadEncryptedThumbnailPreview(thumbFile)
+                        }
+                        result[media.id] = preview
                     } catch (_: Exception) { }
                 }
                 result
