@@ -408,8 +408,6 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
             }
         }
     }
-}
-
     if (renameAlbumId != null) {
         AlertDialog(
             onDismissRequest = { renameAlbumId = null },
@@ -428,6 +426,9 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
             dismissButton = { TextButton(onClick = { renameAlbumId = null }) { Text("Cancel") } }
         )
     }
+
+}
+
 @Composable
 private fun SecurityPage() {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
