@@ -10,9 +10,10 @@ import java.nio.file.StandardCopyOption
 import java.util.UUID
 
 /**
- * Imports a source file into the vault by encrypting it directly to a UUID-based
- * storage name. The source is not modified. No plaintext copy is created inside
- * the vault. Metadata database remains plaintext and is explicitly documented.
+ * Moves a source file into the encrypted vault: encrypts first, verifies the
+ * encrypted output, commits metadata, and only then deletes the original source.
+ * If encryption or metadata insertion fails, the original source is preserved.
+ * Metadata database remains plaintext and is explicitly documented.
  */
 class MediaImportEngine(
     private val session: UnlockedVaultSession,
@@ -31,14 +32,35 @@ class MediaImportEngine(
         val now = System.currentTimeMillis()
         Files.createDirectories(encryptedMediaDirectory)
 
+        // Phase 1: encrypt and verify output. Keep source untouched if this fails.
         try {
             session.withKey { key ->
                 VaultFileCrypto.encryptFile(source, destination, key)
             }
+            require(Files.isRegularFile(destination) && Files.size(destination) > 0L) {
+                "Encrypted vault file verification failed; source was kept."
+            }
+        } catch (e: Exception) {
+            Files.deleteIfExists(destination)
+            throw e
+        }
+
+        // Phase 2: commit metadata. On DB failure, remove encrypted output but keep source.
+        try {
             database.insertMedia(id, originalName, mime, size, now, relative)
         } catch (e: Exception) {
             Files.deleteIfExists(destination)
             throw e
+        }
+
+        // Phase 3: remove original only after encryption and DB metadata succeed.
+        // If deletion fails, the vault copy remains valid and source is left in place.
+        try {
+            Files.delete(source)
+        } catch (e: Exception) {
+            throw IllegalStateException(
+                "Imported successfully, but could not delete original source file: $originalName", e
+            )
         }
 
         return MediaRecord(id, originalName, mime, size, now, relative)
