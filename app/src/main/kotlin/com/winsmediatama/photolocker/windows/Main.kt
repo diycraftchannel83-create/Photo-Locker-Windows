@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.awaitPointerEventScope
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.winsmediatama.photolocker.windows.core.session.UnlockedVaultSession
@@ -55,7 +56,7 @@ private fun PhotoLockerDesktopApp() {
             }
         }
     }
-    Row(Modifier.fillMaxSize().pointerInput(Unit) {
+    Row(Modifier.fillMaxSize().onKeyEvent { lastActivity = System.currentTimeMillis(); false }.pointerInput(Unit) {
         awaitPointerEventScope {
             while (true) {
                 awaitPointerEvent()
