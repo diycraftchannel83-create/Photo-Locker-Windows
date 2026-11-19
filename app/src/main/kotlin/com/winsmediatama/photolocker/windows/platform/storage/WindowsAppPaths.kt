@@ -3,9 +3,11 @@ package com.winsmediatama.photolocker.windows.platform.storage
 import java.nio.file.Files
 import java.nio.file.Path
 
-/** Standard Windows per-user application storage paths. */
+/** Per-user config plus a vault folder that may be relocated to another drive. */
 object WindowsAppPaths {
     private const val APP_DIRECTORY = "Photo-Locker-Windows"
+    private const val VAULT_FOLDER = "vault"
+    private const val LOCATION_CONFIG = "vault-location.txt"
 
     fun appDataRoot(): Path {
         val base = System.getenv("LOCALAPPDATA")
@@ -13,7 +15,31 @@ object WindowsAppPaths {
         return Path.of(base, APP_DIRECTORY)
     }
 
-    fun vaultDirectory(): Path = appDataRoot().resolve("vault")
+    private fun defaultVaultDirectory(): Path = appDataRoot().resolve(VAULT_FOLDER)
+
+    fun vaultDirectory(): Path {
+        val config = appDataRoot().resolve(LOCATION_CONFIG)
+        if (Files.exists(config)) {
+            try {
+                val configured = Files.readString(config).trim()
+                if (configured.isNotBlank()) return Path.of(configured).toAbsolutePath().normalize()
+            } catch (_: Exception) { /* fall back to the default location */ }
+        }
+        return defaultVaultDirectory()
+    }
+
+    /** Store a vault destination path. Caller should select an existing folder. */
+    fun setVaultDirectory(directory: Path) {
+        val normalized = directory.toAbsolutePath().normalize()
+        Files.createDirectories(normalized)
+        Files.createDirectories(appDataRoot())
+        Files.writeString(appDataRoot().resolve(LOCATION_CONFIG), normalized.toString())
+    }
+
+    fun resetVaultDirectory() {
+        Files.deleteIfExists(appDataRoot().resolve(LOCATION_CONFIG))
+    }
+
     fun keyFile(): Path = vaultDirectory().resolve("vault.key.dpapi")
     fun encryptedMediaDirectory(): Path = vaultDirectory().resolve("media")
     fun thumbnailDirectory(): Path = vaultDirectory().resolve("thumbnails")
