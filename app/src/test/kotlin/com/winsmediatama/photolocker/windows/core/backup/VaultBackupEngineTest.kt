@@ -18,9 +18,9 @@ class VaultBackupEngineTest {
         Files.createDirectories(vault.resolve(".temporary"))
         Files.write(vault.resolve(".temporary/plain.tmp"), byteArrayOf(99))
         val backup = root.resolve("backup.plwbackup")
-        VaultBackupEngine.createBackup(vault, backup)
+        VaultBackupEngine.createBackup(vault, backup, "backup-password-123".toCharArray())
         val restored = root.resolve("restored")
-        VaultBackupEngine.restoreBackup(backup, restored)
+        VaultBackupEngine.restoreBackup(backup, restored, "backup-password-123".toCharArray())
         assertContentEquals(Files.readAllBytes(vault.resolve("vault.key.dpapi")), Files.readAllBytes(restored.resolve("vault.key.dpapi")))
         assertContentEquals(Files.readAllBytes(vault.resolve("media/file.plwenc")), Files.readAllBytes(restored.resolve("media/file.plwenc")))
         assertFails { Files.readAllBytes(restored.resolve(".temporary/plain.tmp")) }
@@ -34,6 +34,6 @@ class VaultBackupEngineTest {
             zip.write(byteArrayOf(1, 2))
             zip.closeEntry()
         }
-        assertFails { VaultBackupEngine.restoreBackup(invalid, root.resolve("restore")) }
+        assertFails { VaultBackupEngine.restoreBackup(invalid, root.resolve("restore"), "backup-password-123".toCharArray()) }
     }
 }
