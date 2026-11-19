@@ -26,7 +26,7 @@ class VaultBackupEngineTest {
         assertFails { Files.readAllBytes(restored.resolve(".temporary/plain.tmp")) }
     }
 
-    @Test fun restoreRejectsMissingManifest() {
+    @Test fun restoreRejectsUnencryptedZipFormat() {
         val root = Files.createTempDirectory("plw-backup-invalid")
         val invalid = root.resolve("invalid.zip")
         ZipOutputStream(Files.newOutputStream(invalid)).use { zip ->
