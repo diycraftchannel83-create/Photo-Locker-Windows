@@ -162,41 +162,65 @@ private fun HomePage(session: UnlockedVaultSession?, setSession: (UnlockedVaultS
 @Composable
 private fun GalleryPage(session: UnlockedVaultSession?) {
     var records by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.MediaRecord>()) }
+    var albums by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.AlbumRecord>()) }
     var error by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("") }
+    var menuMediaId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(session) {
-        records = emptyList()
-        error = ""
+        records = emptyList(); albums = emptyList(); error = ""; status = ""
         if (session?.isUnlocked == true) {
             try {
-                records = VaultDatabase(WindowsAppPaths.databaseFile(), session).listMedia()
-            } catch (e: Exception) {
-                error = e.message ?: "Could not load gallery."
-            }
+                val db = VaultDatabase(WindowsAppPaths.databaseFile(), session)
+                records = db.listMedia()
+                albums = db.listAlbums()
+            } catch (e: Exception) { error = e.message ?: "Could not load gallery." }
         }
     }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Encrypted media library", style = MaterialTheme.typography.titleLarge)
         if (session?.isUnlocked != true) {
-            Text("Unlock your vault from Home to view imported media metadata.")
+            Text("Unlock your vault from Home to view imported media.")
         } else if (error.isNotBlank()) {
             Text(error, color = MaterialTheme.colorScheme.error)
         } else if (records.isEmpty()) {
             Text("No media imported yet. Use Home → Import Photos / Videos.")
         } else {
-            Text("${records.size} item(s)")
+            Text("${records.size} item(s) • Album assignment available")
+            if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.primary)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(records) { item ->
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(item.originalName, style = MaterialTheme.typography.titleMedium)
-                            Text(item.mimeType)
-                            Text("Size: ${item.fileSize} bytes")
-                            Text("Imported: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(item.importedAt))}")
-                            Text("ID: ${item.id}", style = MaterialTheme.typography.bodySmall)
+                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(item.originalName, style = MaterialTheme.typography.titleMedium)
+                                Text(item.mimeType)
+                                Text("Size: ${item.fileSize} bytes")
+                                Text("Imported: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(item.importedAt))}")
+                            }
+                            Box {
+                                OutlinedButton(onClick = { menuMediaId = item.id }, enabled = albums.isNotEmpty()) {
+                                    Text("Add to album")
+                                }
+                                DropdownMenu(expanded = menuMediaId == item.id, onDismissRequest = { menuMediaId = null }) {
+                                    albums.forEach { album ->
+                                        DropdownMenuItem(
+                                            text = { Text(album.name) },
+                                            onClick = {
+                                                status = try {
+                                                    VaultDatabase(WindowsAppPaths.databaseFile(), session).addMediaToAlbum(item.id, album.id)
+                                                    "Added to album: ${album.name}"
+                                                } catch (ex: Exception) { ex.message ?: "Album assignment failed." }
+                                                menuMediaId = null
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+            if (albums.isEmpty()) Text("Create an album first in the Albums page to organize media.")
         }
     }
 }
@@ -206,26 +230,44 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
     var albums by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.AlbumRecord>()) }
     var albumName by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var selectedAlbum by remember { mutableStateOf<com.winsmediatama.photolocker.windows.core.database.AlbumRecord?>(null) }
+    var albumMedia by remember { mutableStateOf(emptyList<com.winsmediatama.photolocker.windows.core.database.MediaRecord>()) }
     fun reload() {
         if (session?.isUnlocked == true) {
             albums = try { VaultDatabase(WindowsAppPaths.databaseFile(), session).listAlbums() }
             catch (e: Exception) { message = e.message ?: "Could not load albums."; emptyList() }
         } else albums = emptyList()
     }
-    LaunchedEffect(session) { reload() }
+    LaunchedEffect(session) { reload(); selectedAlbum = null; albumMedia = emptyList() }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Albums", style = MaterialTheme.typography.titleLarge)
         if (session?.isUnlocked != true) {
             Text("Unlock your vault from Home to manage albums.")
+        } else if (selectedAlbum != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = { selectedAlbum = null; albumMedia = emptyList() }) { Text("Back to Albums") }
+                Text(selectedAlbum!!.name, style = MaterialTheme.typography.titleMedium)
+            }
+            Text("${albumMedia.size} media item(s) in this album")
+            if (albumMedia.isEmpty()) Text("This album is empty. Add media from Gallery using Add to album.")
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(albumMedia) { media ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(media.originalName, style = MaterialTheme.typography.titleMedium)
+                            Text(media.mimeType)
+                            Text("Size: ${media.fileSize} bytes")
+                        }
+                    }
+                }
+            }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(value = albumName, onValueChange = { albumName = it }, label = { Text("Album name") }, modifier = Modifier.weight(1f))
                 Button(onClick = {
                     message = try {
                         VaultDatabase(WindowsAppPaths.databaseFile(), session).createAlbum(albumName)
-                        albumName = ""
-                        reload()
-                        "Album created."
+                        albumName = ""; reload(); "Album created."
                     } catch (e: Exception) { e.message ?: "Could not create album." }
                 }, enabled = albumName.trim().isNotEmpty()) { Text("Create") }
             }
@@ -234,9 +276,16 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(albums) { album ->
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(14.dp)) {
-                            Text(album.name, style = MaterialTheme.typography.titleMedium)
-                            Text("Created: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(album.createdAt))}")
+                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(album.name, style = MaterialTheme.typography.titleMedium)
+                                Text("Created: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(album.createdAt))}")
+                            }
+                            OutlinedButton(onClick = {
+                                selectedAlbum = album
+                                albumMedia = try { VaultDatabase(WindowsAppPaths.databaseFile(), session).listMediaForAlbum(album.id) }
+                                catch (e: Exception) { message = e.message ?: "Could not open album."; emptyList() }
+                            }) { Text("Open") }
                         }
                     }
                 }
