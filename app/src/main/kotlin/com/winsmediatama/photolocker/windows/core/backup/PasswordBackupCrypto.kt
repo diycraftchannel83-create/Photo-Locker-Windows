@@ -29,6 +29,9 @@ object PasswordBackupCrypto {
                 out.write(salt)
                 Files.copy(encryptedTemp, out)
             }
+        } catch (e: Exception) {
+            Files.deleteIfExists(outputFile)
+            throw e
         } finally {
             derived.fill(0)
             Files.deleteIfExists(encryptedTemp)
