@@ -434,26 +434,38 @@ private fun AlbumsPage(session: UnlockedVaultSession?) {
 @Composable
 private fun BackupPage(session: UnlockedVaultSession?, setSession: (UnlockedVaultSession?) -> Unit) {
     var message by remember { mutableStateOf("") }
+    var backupPassword by remember { mutableStateOf("") }
+    var backupConfirm by remember { mutableStateOf("") }
+    var restorePassword by remember { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Encrypted vault backup", style = MaterialTheme.typography.titleLarge)
-        Text("Backup contains encrypted media, encrypted metadata fields, the password-protected vault-key blob, and an integrity manifest. It is not a plaintext export.")
-        Button(enabled = session?.isUnlocked == true, onClick = {
+        Text("Backup contains encrypted media, encrypted metadata fields, the vault password-key blob, and an integrity manifest. The entire backup archive is password-encrypted.")
+        OutlinedTextField(value=backupPassword,onValueChange={backupPassword=it},label={Text("Backup password (8+ characters)")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),singleLine=true)
+        OutlinedTextField(value=backupConfirm,onValueChange={backupConfirm=it},label={Text("Confirm backup password")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),singleLine=true)
+        Button(enabled = session?.isUnlocked == true && backupPassword.length>=8 && backupPassword==backupConfirm, onClick = {
             val chooser = JFileChooser().apply { dialogTitle = "Save Photo-Locker backup"; selectedFile = java.io.File("Photo-Locker-Backup.plwbackup") }
             if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
                 message = try {
-                    VaultBackupEngine.createBackup(WindowsAppPaths.vaultDirectory(), chooser.selectedFile.toPath())
-                    "Backup created with SHA-256 manifest."
+                    val secret = backupPassword.toCharArray()
+                    try { VaultBackupEngine.createBackup(WindowsAppPaths.vaultDirectory(), chooser.selectedFile.toPath(), secret) }
+                    finally { secret.fill('\\u0000') }
+                    backupPassword=""; backupConfirm=""
+                    "Backup created: encrypted archive and SHA-256 manifest verified for source files."
                 } catch (e: Exception) { "Backup failed: ${e.message ?: e.javaClass.simpleName}" }
             }
         }) { Text("Create Backup") }
-        OutlinedButton(onClick = {
+        OutlinedTextField(value=restorePassword,onValueChange={restorePassword=it},label={Text("Backup password for restore")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),singleLine=true)
+        OutlinedButton(enabled=restorePassword.length>=8,onClick = {
             val fileChooser = JFileChooser().apply { dialogTitle = "Select Photo-Locker backup"; fileFilter = javax.swing.filechooser.FileNameExtensionFilter("Photo-Locker Backup", "plwbackup") }
             if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
                 val folderChooser = JFileChooser().apply { dialogTitle = "Choose empty restore destination folder"; fileSelectionMode = JFileChooser.DIRECTORIES_ONLY }
                 if (folderChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
                     val target = folderChooser.selectedFile.toPath()
                     message = try {
-                        VaultBackupEngine.restoreBackup(fileChooser.selectedFile.toPath(), target)
+                        val secret = restorePassword.toCharArray()
+                        try { VaultBackupEngine.restoreBackup(fileChooser.selectedFile.toPath(), target, secret) }
+                        finally { secret.fill('\\u0000') }
+                        restorePassword=""
                         WindowsAppPaths.setVaultDirectory(target)
                         session?.lock()
                         setSession(null)
@@ -462,7 +474,7 @@ private fun BackupPage(session: UnlockedVaultSession?, setSession: (UnlockedVaul
                 }
             }
         }) { Text("Restore Backup") }
-        Text("Restore requires an empty destination folder. Keep the backup file in a separate drive or location.", style = MaterialTheme.typography.bodySmall)
+        Text("Backup encryption uses a separate password (not necessarily the vault password). Restore requires an empty destination folder. Store the backup on a separate drive or location.", style = MaterialTheme.typography.bodySmall)
         if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.primary)
     }
 }
